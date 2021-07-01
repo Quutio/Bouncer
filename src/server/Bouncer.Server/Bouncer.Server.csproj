@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net5.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<UserSecretsId>210cdb06-48dc-4161-8bfd-56166a9f21c0</UserSecretsId>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Protobuf Include="..\..\grpc\servers.proto" GrpcServices="Server" />
+		<Protobuf Include="..\..\grpc\games.proto" GrpcServices="Server" />
+		<Protobuf Include="..\..\grpc\queue.proto" GrpcServices="Server" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Grpc.AspNetCore" Version="2.38.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="..\..\grpc\**">
+			<Link>Protos\%(RecursiveDir)%(Filename)%(Extension)</Link>
+		</Content>
+	</ItemGroup>
+</Project>

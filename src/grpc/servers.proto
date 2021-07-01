@@ -1,0 +1,149 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "Bouncer.Grpc";
+
+option java_package = "fi.joniaromaa.bouncer.grpc";
+option java_multiple_files = true;
+
+package servers;
+
+service ServerService {
+	rpc Session (stream ServerSessionRequest) returns (stream ServerSessionResponse);
+
+	rpc Listen(ServerListenRequest) returns (stream ServerStatusUpdate);
+
+	rpc Join (ServerJoinRequest) returns (ServerJoinResponse);
+}
+
+message ServerData {
+	string name = 1;
+	string group = 2;
+	string type = 3;
+
+	string host = 4;
+	int32 port = 5;
+}
+
+message ServerStatusUpdate {
+	int32 serverId = 1;
+
+	oneof update {
+		ServerStatusAdd add = 2; //Used only for responses
+		ServerStatusRemove remove = 3; //Used only for responses
+
+		ServerStatusUserJoin userJoin = 4;
+		ServerStatusUserQuit userQuit = 5;
+	}
+}
+
+message ServerStatusAdd {
+	ServerData data = 1;
+}
+
+message ServerStatusRemove {
+}
+
+message ServerStatusUserJoin {
+	string user = 1;
+}
+
+message ServerStatusUserQuit {
+	string user = 1;
+}
+
+message ServerSessionRequest {
+	int32 requestId = 1;
+
+	oneof request {
+		ServerSessionAck ack = 2;
+
+		ServerRegistrationRequest registration = 3;
+		ServerUnregistrationRequest unregistration = 4;
+
+		ServerStatusUpdate update = 5;
+	}
+}
+
+message ServerSessionAck {
+}
+
+message ServerRegistrationRequest {
+	ServerData data = 1;
+}
+
+message ServerUnregistrationRequest {
+	int32 serverId = 1;
+}
+
+message ServerSessionResponse {
+	int32 requestId = 1;
+
+	oneof response {
+		ServerRegistrationResponse registration = 3;
+	}
+}
+
+message ServerRegistrationResponse {
+	int32 serverId = 1;
+}
+
+message ServerJoinRequest {
+	repeated ServerFilter filter = 1;
+	repeated ServerSort sort = 2;
+
+	repeated string user = 3;
+}
+
+message ServerFilter {
+	oneof condition {
+		ServerFilterName name = 1;
+		ServerFilterGroup group = 2;
+		ServerFilterType type = 3;
+	}
+}
+
+message ServerFilterName {
+	string value = 1;
+}
+
+message ServerFilterGroup {
+	string value = 1;
+}
+
+message ServerFilterType {
+	string value = 1;
+}
+
+message ServerSort {
+	oneof sort {
+		ServerSortByPlayerCount byPlayerCount = 1;
+	}
+}
+
+message ServerSortByPlayerCount {
+	Order value = 1;
+
+	enum Order {
+		Default = 0;
+		Ascending = 1;
+		Descending = 2;
+	}
+}
+
+message ServerJoinResponse {
+	oneof status {
+		ServerJoinSuccess success = 1;
+		ServerJoinNoServers noServers = 2;
+	}
+}
+
+message ServerJoinSuccess {
+	int32 serverId = 1;
+}
+
+message ServerJoinNoServers {
+}
+
+message ServerListenRequest {
+	repeated ServerFilter filter = 1;
+}

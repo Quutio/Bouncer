@@ -1,0 +1,44 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "Bouncer.Grpc";
+
+option java_package = "fi.joniaromaa.bouncer.grpc";
+option java_multiple_files = true;
+
+package games;
+
+service GameService {
+	rpc Register (GameRegisterRequest) returns (GameRegisterResponse);
+
+	rpc Join (GameJoinRequest) returns (GameJoinResponse);
+}
+
+message GameRegisterRequest {
+	int32 serverId = 1;
+
+	GameData data = 2;
+}
+
+message GameData {
+	int32 id = 1;
+
+	string gamemode = 2;
+
+	GameStatus status = 3;
+}
+
+message GameStatus {
+
+}
+
+message GameRegisterResponse {
+
+}
+
+message GameJoinRequest {
+
+}
+
+message GameJoinResponse {
+
+}

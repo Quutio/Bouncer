@@ -1,0 +1,26 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "Bouncer.Grpc";
+
+option java_package = "fi.joniaromaa.bouncer.grpc";
+option java_multiple_files = true;
+
+package queue;
+
+import "servers.proto";
+import "games.proto";
+
+service QueueService {
+	rpc Join (QueueJoinRequest) returns (QueueJoinResponse);
+}
+
+message QueueJoinRequest {
+	oneof type {
+		.servers.ServerJoinRequest server = 1;
+		.games.GameRegisterRequest game = 2;
+	}
+}
+
+message QueueJoinResponse {
+
+}

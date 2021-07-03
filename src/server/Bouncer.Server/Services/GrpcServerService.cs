@@ -157,6 +157,29 @@ namespace Bouncer.Server.Services
 			});
 		}
 
+		public override Task<ServerListResponse> List(ServerListRequest request, ServerCallContext context)
+		{
+			ServerListResponse response = new();
+			foreach (RegisteredServer server in this.serverManager.Servers)
+			{
+				ServerListData serverListData = new()
+				{
+					ServerId = (int)server.Id,
+
+					Data = server.Data
+				};
+
+				foreach (Guid player in server.Players)
+				{
+					serverListData.Players.Add(player.ToString());
+				}
+
+				response.Servers.Add(serverListData);
+			}
+
+			return Task.FromResult(response);
+		}
+
 		public override async Task Listen(ServerListenRequest request, IServerStreamWriter<ServerStatusUpdate> responseStream, ServerCallContext context)
 		{
 			try

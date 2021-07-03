@@ -9,8 +9,9 @@ package servers;
 
 service ServerService {
 	rpc Session (stream ServerSessionRequest) returns (stream ServerSessionResponse);
-
-	rpc Listen(ServerListenRequest) returns (stream ServerStatusUpdate);
+	
+	rpc List (ServerListRequest) returns (ServerListResponse);
+	rpc Listen (ServerListenRequest) returns (stream ServerStatusUpdate);
 
 	rpc Join (ServerJoinRequest) returns (ServerJoinResponse);
 }
@@ -87,6 +88,25 @@ message ServerRegistrationResponse {
 	int32 serverId = 1;
 }
 
+message ServerListRequest {
+}
+
+message ServerListResponse {
+	repeated ServerListData servers = 1;
+}
+
+message ServerListData {
+	int32 serverId = 1;
+
+	ServerData data = 2;
+
+	repeated string players = 3;
+}
+
+message ServerListenRequest {
+	repeated ServerFilter filter = 1;
+}
+
 message ServerJoinRequest {
 	repeated ServerFilter filter = 1;
 	repeated ServerSort sort = 2;
@@ -142,8 +162,4 @@ message ServerJoinSuccess {
 }
 
 message ServerJoinNoServers {
-}
-
-message ServerListenRequest {
-	repeated ServerFilter filter = 1;
 }

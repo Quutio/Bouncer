@@ -1,3 +1,4 @@
 name: test
 type: vanilla
-gamemode: survival
+group: survival
+api-url: "localhost:5000"

@@ -17,6 +17,9 @@ class PluginConfig
 	@Setting("type")
 	lateinit var type: String
 
+	@Setting("api-url")
+	lateinit var apiUrl: String
+
 	companion object
 	{
 		@JvmStatic

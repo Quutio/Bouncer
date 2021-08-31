@@ -45,7 +45,7 @@ class BukkitBouncerPlugin : JavaPlugin()
 			)
 		)
 
-		this.bouncer = BouncerAPI("localhost:5000")
+		this.bouncer = BouncerAPI(config.apiUrl)
 		this.bouncerServer = this.bouncer.serverLoadBalancer.registerServer(info)
 
 		for (player: Player in this.server.onlinePlayers)

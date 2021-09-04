@@ -47,8 +47,6 @@ public class SpongeBouncerPlugin @Inject constructor(private var container: Plug
 
         val address: String = if (optAddress.isPresent) optAddress.get().address.hostAddress else "";
 
-        this.logger.info(address)
-
         val info = BouncerServerInfo(
             this.config.name,
             this.config.group,
@@ -64,8 +62,6 @@ public class SpongeBouncerPlugin @Inject constructor(private var container: Plug
                 optAddress.get().port
             )
         )
-
-        this.logger.info(this.config.apiUrl);
 
         this.bouncer = BouncerAPI(this.config.apiUrl);
         this.bouncerServer = this.bouncer.serverLoadBalancer.registerServer(info);

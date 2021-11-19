@@ -1,11 +1,11 @@
 import org.spongepowered.gradle.plugin.config.PluginLoaders
-import org.spongepowered.plugin.metadata.PluginDependency
+import org.spongepowered.plugin.metadata.model.PluginDependency
 
 plugins {
     `java-library`
     kotlin("jvm")
-    id("org.spongepowered.gradle.plugin") version "1.1.1"
     id("com.github.johnrengelman.shadow")
+    id("org.spongepowered.gradle.plugin") version "2.0.0"
 }
 
 group = "fi.joniaromaa"
@@ -23,11 +23,15 @@ dependencies {
 }
 
 sponge {
-    apiVersion("8.0.0")
+    apiVersion("8.0.0-SNAPSHOT")
+    license("MIT")
+    loader {
+        name(PluginLoaders.JAVA_PLAIN)
+        version("1.0")
+    }
     plugin("bouncer") {
-        loader(PluginLoaders.JAVA_PLAIN)
         displayName("Bouncer")
-        mainClass("fi.joniaromaa.bouncer.sponge.SpongeBouncerPlugin")
+        entrypoint("fi.joniaromaa.bouncer.sponge.SpongeBouncerPlugin")
         description("A load balancer for Minecraft servers")
         links {
             homepage("https://github.com/Quutio/Bouncer")

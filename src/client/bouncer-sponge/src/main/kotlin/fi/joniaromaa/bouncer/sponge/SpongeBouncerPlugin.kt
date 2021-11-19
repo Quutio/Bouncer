@@ -12,13 +12,11 @@ import org.spongepowered.api.Sponge
 import org.spongepowered.api.config.ConfigDir
 import org.spongepowered.api.entity.living.player.server.ServerPlayer
 import org.spongepowered.api.event.Listener
-import org.spongepowered.api.event.lifecycle.ConstructPluginEvent
 import org.spongepowered.api.event.lifecycle.StartedEngineEvent
-import org.spongepowered.api.event.lifecycle.StartingEngineEvent
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.hocon.HoconConfigurationLoader
 import org.spongepowered.plugin.PluginContainer
-import org.spongepowered.plugin.jvm.Plugin;
+import org.spongepowered.plugin.builtin.jvm.Plugin
 import java.io.File
 import java.lang.Exception
 import java.net.DatagramSocket
@@ -28,7 +26,11 @@ import java.nio.file.Path
 import java.util.*
 
 @Plugin("bouncer")
-public class SpongeBouncerPlugin @Inject constructor(private var container: PluginContainer, private var logger: Logger) {
+public class SpongeBouncerPlugin
+@Inject constructor(
+    private val container: PluginContainer,
+    private val logger: Logger
+) {
 
     @Inject
     @ConfigDir(sharedRoot = false)
@@ -47,18 +49,26 @@ public class SpongeBouncerPlugin @Inject constructor(private var container: Plug
 
         val address: String = if (optAddress.isPresent) optAddress.get().address.hostAddress else "";
 
+        println("Address: $address");
+
+        val ip = DatagramSocket().use { socket ->
+            socket.connect(InetAddress.getByName("1.1.1.1"), 53)
+            return@use socket.localAddress.hostAddress;
+        };
+
+        if(ip.isEmpty()) {
+            throw Exception("Address error")
+        }
+
         val info = BouncerServerInfo(
             this.config.name,
             this.config.group,
             this.config.type,
 
+
+
             InetSocketAddress.createUnresolved(
-                address.ifEmpty {
-                    DatagramSocket().use { socket ->
-                        socket.connect(InetAddress.getByName("1.1.1.1"), 53)
-                        return@use socket.localAddress.hostAddress;
-                    }
-                },
+                ip,
                 optAddress.get().port
             )
         )
@@ -75,11 +85,22 @@ public class SpongeBouncerPlugin @Inject constructor(private var container: Plug
 
     private fun loadPluginConfig() {
         val loader: HoconConfigurationLoader =
-            HoconConfigurationLoader.builder().file(File(this.configDir.toFile(), "config.conf")).build();
+            HoconConfigurationLoader.builder()
+                .file(File(this.configDir.toFile(), "config.conf"))
+                .defaultOptions {
+                    it.shouldCopyDefaults(true)
+                }.build()
 
         val node: ConfigurationNode = loader.load();
         this.config = PluginConfig.loadFrom(node);
         this.config.saveTo(node);
         loader.save(node);
     }
+
+    companion object
+    {
+        @JvmStatic
+        internal lateinit var container: PluginContainer;
+    }
+
 }

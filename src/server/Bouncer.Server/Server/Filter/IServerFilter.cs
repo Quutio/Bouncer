@@ -1,7 +1,6 @@
-﻿namespace Bouncer.Server.Server.Filter
+﻿namespace Bouncer.Server.Server.Filter;
+
+internal interface IServerFilter
 {
-	internal interface IServerFilter
-	{
-		bool Filter(RegisteredServer server);
-	}
+	bool Filter(RegisteredServer server);
 }

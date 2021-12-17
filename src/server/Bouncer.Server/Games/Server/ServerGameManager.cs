@@ -1,29 +1,28 @@
 ﻿using System.Collections.Generic;
 using Bouncer.Server.Server;
 
-namespace Bouncer.Server.Games.Server
+namespace Bouncer.Server.Games.Server;
+
+internal sealed class ServerGameManager
 {
-	internal sealed class ServerGameManager
+	internal RegisteredServer Server { get; }
+
+	private readonly Dictionary<uint, RegisteredGame> gamesById;
+
+	internal ServerGameManager(RegisteredServer server)
 	{
-		internal RegisteredServer Server { get; }
+		this.Server = server;
 
-		private readonly Dictionary<uint, RegisteredGame> gamesById;
+		this.gamesById = new Dictionary<uint, RegisteredGame>();
+	}
 
-		internal ServerGameManager(RegisteredServer server)
-		{
-			this.Server = server;
+	internal void Register(RegisteredGame game)
+	{
 
-			this.gamesById = new Dictionary<uint, RegisteredGame>();
-		}
+	}
 
-		internal void Register(RegisteredGame game)
-		{
+	internal void Unregister()
+	{
 
-		}
-
-		internal void Unregister()
-		{
-
-		}
 	}
 }

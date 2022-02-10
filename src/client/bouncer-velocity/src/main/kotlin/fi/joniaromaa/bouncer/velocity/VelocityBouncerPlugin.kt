@@ -27,7 +27,7 @@ class VelocityBouncerPlugin @Inject constructor(private val proxy: ProxyServer)
 	internal val serversByName: MutableMap<String, RegisteredServer> = mutableMapOf()
 	internal val serversById: MutableMap<Int, RegisteredServer> = mutableMapOf()
 
-	internal val channel: ManagedChannel = ManagedChannelBuilder.forTarget("localhost:5000").usePlaintext().build()
+	internal val channel: ManagedChannel = ManagedChannelBuilder.forTarget(System.getenv("BOUNCER_ADDRESS") ?: "localhost:5000").usePlaintext().build()
 	internal val stub: ServerServiceGrpcKt.ServerServiceCoroutineStub = ServerServiceGrpcKt.ServerServiceCoroutineStub(channel)
 
 	@Subscribe
@@ -45,7 +45,7 @@ class VelocityBouncerPlugin @Inject constructor(private val proxy: ProxyServer)
 						val address: InetSocketAddress = InetSocketAddress.createUnresolved(serverData.host, serverData.port)
 						val server: RegisteredServer = this@VelocityBouncerPlugin.proxy.registerServer(ServerInfo(serverData.name, address))
 
-						println("Add server ${update.serverId}")
+						println("Add server ${update.serverId} (${serverData.host}:${serverData.port})")
 
 						this@VelocityBouncerPlugin.serversById[update.serverId] = server
 						this@VelocityBouncerPlugin.serversByName[serverData.name] = server

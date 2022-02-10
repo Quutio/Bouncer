@@ -21,8 +21,8 @@ repositories {
 dependencies {
     implementation(project(":bouncer-common"))
 
-    compileOnly("com.velocitypowered:velocity-api:1.1.0-SNAPSHOT")
-    kapt("com.velocitypowered:velocity-api:1.1.0-SNAPSHOT")
+    compileOnly("com.velocitypowered:velocity-api:3.0.1-SNAPSHOT")
+    kapt("com.velocitypowered:velocity-api:3.0.1-SNAPSHOT")
 
     runtimeOnly("io.grpc:grpc-netty:1.38.1")
 }

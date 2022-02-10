@@ -47,7 +47,7 @@ public class SpongeBouncerPlugin
 
         val optAddress: Optional<InetSocketAddress> = Sponge.server().boundAddress();
 
-        val address: String = if (optAddress.isPresent) optAddress.get().address.hostAddress else "";
+        val address: String? = System.getenv("SERVER_IP") ?: if (optAddress.isPresent) optAddress.get().address.hostAddress else "";
 
         println("Address: $address");
 
@@ -56,7 +56,7 @@ public class SpongeBouncerPlugin
             return@use socket.localAddress.hostAddress;
         };
 
-        if(ip.isEmpty()) {
+        if (ip.isEmpty()) {
             throw Exception("Address error")
         }
 
@@ -65,15 +65,13 @@ public class SpongeBouncerPlugin
             this.config.group,
             this.config.type,
 
-
-
             InetSocketAddress.createUnresolved(
                 ip,
                 optAddress.get().port
             )
         )
 
-        this.bouncer = BouncerAPI(this.config.apiUrl);
+        this.bouncer = BouncerAPI(System.getenv("BOUNCER_ADDRESS") ?: this.config.apiUrl);
         this.bouncerServer = this.bouncer.serverLoadBalancer.registerServer(info);
 
         for (player: ServerPlayer in Sponge.server().onlinePlayers()) {
@@ -97,8 +95,7 @@ public class SpongeBouncerPlugin
         loader.save(node);
     }
 
-    companion object
-    {
+    companion object {
         @JvmStatic
         internal lateinit var container: PluginContainer;
     }

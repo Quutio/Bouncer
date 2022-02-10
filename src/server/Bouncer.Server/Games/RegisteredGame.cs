@@ -1,6 +1,5 @@
-﻿namespace Bouncer.Server.Games
+﻿namespace Bouncer.Server.Games;
+
+internal sealed class RegisteredGame
 {
-	internal sealed class RegisteredGame
-	{
-	}
 }

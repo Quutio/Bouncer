@@ -6,8 +6,8 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent
 import com.velocitypowered.api.plugin.Plugin
 import com.velocitypowered.api.proxy.ProxyServer
-import com.velocitypowered.api.proxy.server.RegisteredServer
 import com.velocitypowered.api.proxy.server.ServerInfo
+import fi.joniaromaa.bouncer.api.server.BouncerServerInfo
 import fi.joniaromaa.bouncer.grpc.ServerData
 import fi.joniaromaa.bouncer.grpc.ServerListenRequest
 import fi.joniaromaa.bouncer.grpc.ServerServiceGrpcKt
@@ -17,23 +17,28 @@ import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.net.InetSocketAddress
 
-@Plugin(id = "bouncer", name = "Bouncer", version = "1.0", url = "https://joniaromaa.fi", authors = [ "Joni Aromaa (isokissa3)" ])
-class VelocityBouncerPlugin @Inject constructor(private val proxy: ProxyServer)
+@Plugin(id = "bouncer", name = "Bouncer", version = "1.0", url = "https://joniaromaa.fi", authors = [ "Joni Aromaa (isokissa3)", "Ossi Erkkilä (avaruus1)" ])
+class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 {
-	internal val serversByName: MutableMap<String, RegisteredServer> = mutableMapOf()
-	internal val serversById: MutableMap<Int, RegisteredServer> = mutableMapOf()
+	private lateinit var bouncer: VelocityBouncerAPI
 
-	internal val channel: ManagedChannel = ManagedChannelBuilder.forTarget(System.getenv("BOUNCER_ADDRESS") ?: "localhost:5000").usePlaintext().build()
+	internal val serversByName: MutableMap<String, BouncerServerInfo> = mutableMapOf()
+	internal val serversById: MutableMap<Int, BouncerServerInfo> = mutableMapOf()
+
+	private val bouncerAddress: String = System.getenv("BOUNCER_ADDRESS") ?: "localhost:5000"
+
+	internal val channel: ManagedChannel = ManagedChannelBuilder.forTarget(bouncerAddress).usePlaintext().build()
 	internal val stub: ServerServiceGrpcKt.ServerServiceCoroutineStub = ServerServiceGrpcKt.ServerServiceCoroutineStub(channel)
 
 	@Subscribe
 	fun onProxyInitialize(event: ProxyInitializeEvent)
 	{
 		this.proxy.eventManager.register(this, PlayerListener(this))
+
+		bouncer = VelocityBouncerAPI(this, bouncerAddress)
 
 		suspend fun startListening()
 		{
@@ -45,20 +50,22 @@ class VelocityBouncerPlugin @Inject constructor(private val proxy: ProxyServer)
 					{
 						val serverData: ServerData = update.add.data
 						val address: InetSocketAddress = InetSocketAddress.createUnresolved(serverData.host, serverData.port)
-						val server: RegisteredServer = this@VelocityBouncerPlugin.proxy.registerServer(ServerInfo(serverData.name, address))
+						this@VelocityBouncerPlugin.proxy.registerServer(ServerInfo(serverData.name, address))
 
 						println("Add server ${update.serverId} (${serverData.host}:${serverData.port})")
 
-						this@VelocityBouncerPlugin.serversById[update.serverId] = server
-						this@VelocityBouncerPlugin.serversByName[serverData.name] = server
+						val info = BouncerServerInfo(serverData.name, serverData.group, serverData.type, address)
+
+						this@VelocityBouncerPlugin.serversById[update.serverId] = info
+						this@VelocityBouncerPlugin.serversByName[serverData.name] = info
 					}
 					ServerStatusUpdate.UpdateCase.REMOVE ->
 					{
 						println("Remove server ${update.serverId}")
-						val server: RegisteredServer = this@VelocityBouncerPlugin.serversById.remove(update.serverId) ?: return@collect
+						val server: BouncerServerInfo = this@VelocityBouncerPlugin.serversById.remove(update.serverId) ?: return@collect
 
-						this@VelocityBouncerPlugin.serversByName.remove(server.serverInfo.name)
-						this@VelocityBouncerPlugin.proxy.unregisterServer(server.serverInfo)
+						this@VelocityBouncerPlugin.serversByName.remove(server.name)
+						this@VelocityBouncerPlugin.proxy.unregisterServer(ServerInfo(server.name, server.address))
 					}
 					else -> {}
 				}

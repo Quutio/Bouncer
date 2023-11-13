@@ -16,9 +16,8 @@ import org.spongepowered.api.event.lifecycle.StartedEngineEvent
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.hocon.HoconConfigurationLoader
 import org.spongepowered.plugin.PluginContainer
-import org.spongepowered.plugin.builtin.jvm.Plugin
+import org.spongepowered.plugin.jvm.Plugin
 import java.io.File
-import java.lang.Exception
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress

@@ -35,8 +35,10 @@ class VelocityBouncerPlugin @Inject constructor(private val proxy: ProxyServer)
 	{
 		this.proxy.eventManager.register(this, PlayerListener(this))
 
-		suspend fun startListening() {
-			stub.listen(ServerListenRequest.newBuilder().build()).collect { update ->
+		suspend fun startListening()
+		{
+			stub.listen(ServerListenRequest.newBuilder().build()).collect()
+			{ update ->
 				when (update.updateCase)
 				{
 					ServerStatusUpdate.UpdateCase.ADD ->
@@ -58,11 +60,13 @@ class VelocityBouncerPlugin @Inject constructor(private val proxy: ProxyServer)
 						this@VelocityBouncerPlugin.serversByName.remove(server.serverInfo.name)
 						this@VelocityBouncerPlugin.proxy.unregisterServer(server.serverInfo)
 					}
+					else -> {}
 				}
 			}
 		}
 
-		GlobalScope.launch {
+		GlobalScope.launch()
+		{
 			while (true)
 			{
 				try

@@ -1,4 +1,3 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
@@ -27,15 +26,11 @@ dependencies {
     implementation("org.spongepowered:configurate-yaml:3.7.1")
 }
 
-tasks.create<ConfigureShadowRelocation>("relocateShadowJar") {
-    target = tasks["shadowJar"] as ShadowJar
-    prefix = "fi.joniaromaa.bouncer.libs"
-}
-
 tasks.withType<ShadowJar> {
-    dependsOn(tasks["relocateShadowJar"])
-
     mergeServiceFiles()
+
+    isEnableRelocation = true
+    relocationPrefix = "fi.joniaromaa.bouncer.libs"
 }
 
 tasks.named("assemble").configure {

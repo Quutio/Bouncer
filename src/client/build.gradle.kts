@@ -1,10 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.5.0"
+    kotlin("jvm") version "1.9.20"
 
-    id("com.google.protobuf") version "0.8.16"
-    id("com.github.johnrengelman.shadow") version "6.1.0"
+    id("com.google.protobuf") version "0.9.4"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "fi.joniaromaa"

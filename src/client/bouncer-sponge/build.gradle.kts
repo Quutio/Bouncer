@@ -72,15 +72,11 @@ tasks.withType(AbstractArchiveTask::class).configureEach {
     isPreserveFileTimestamps = false
 }
 
-tasks.create<com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation>("relocateShadowJar") {
-    target = tasks["shadowJar"] as com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-    prefix = "fi.joniaromaa.bouncer.libs"
-}
-
 tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
-    dependsOn(tasks["relocateShadowJar"])
-
     mergeServiceFiles()
+
+    isEnableRelocation = true
+    relocationPrefix = "fi.joniaromaa.bouncer.libs"
 }
 
 tasks.named("assemble").configure {

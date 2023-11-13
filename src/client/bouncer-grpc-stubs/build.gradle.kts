@@ -1,8 +1,5 @@
-import com.google.protobuf.gradle.generateProtoTasks
 import com.google.protobuf.gradle.id
-import com.google.protobuf.gradle.plugins
 import com.google.protobuf.gradle.protobuf
-import com.google.protobuf.gradle.protoc
 
 plugins {
     kotlin("jvm")
@@ -19,32 +16,33 @@ dependencies {
     protobuf(project(":bouncer-protos"))
 
     api(kotlin("stdlib"))
-    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0")
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
-    api("io.grpc:grpc-protobuf:1.39.0")
-    api("com.google.protobuf:protobuf-java-util:3.17.3")
-    api("io.grpc:grpc-kotlin-stub:1.1.0")
+    api("io.grpc:grpc-protobuf:1.59.0")
+    api("io.grpc:grpc-kotlin-stub:1.4.0")
+    api("com.google.protobuf:protobuf-kotlin:3.25.0")
 }
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:3.17.3"
+        artifact = "com.google.protobuf:protoc:3.25.0"
     }
-
     plugins {
         id("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.39.0"
+            artifact = "io.grpc:protoc-gen-grpc-java:1.59.0"
         }
         id("grpckt") {
-            artifact = "io.grpc:protoc-gen-grpc-kotlin:1.1.0:jdk7@jar"
+            artifact = "io.grpc:protoc-gen-grpc-kotlin:1.4.0:jdk8@jar"
         }
     }
-
     generateProtoTasks {
         all().forEach {
             it.plugins {
                 id("grpc")
                 id("grpckt")
+            }
+            it.builtins {
+                id("kotlin")
             }
         }
     }

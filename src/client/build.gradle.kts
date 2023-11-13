@@ -23,6 +23,40 @@ allprojects {
     }
 }
 
+subprojects {
+    group = parent!!.group
+    version = parent!!.version
+
+    pluginManager.withPlugin("maven-publish") {
+        extensions.getByType(PublishingExtension::class).apply {
+            publications {
+                create<MavenPublication>(project.name) {
+                    groupId = "$group"
+                    artifactId = project.name
+                    version = version
+
+                    from(components["java"])
+                }
+            }
+
+            val mavenUser: String by project
+            val mavenPassword: String by project
+
+            repositories {
+                maven {
+                    credentials {
+                        username = mavenUser
+                        password = mavenPassword
+                    }
+
+                    name = "equelix-snapshots"
+                    url = uri("https://maven.quut.io/repository/maven-snapshots/")
+                }
+            }
+        }
+    }
+}
+
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(8))

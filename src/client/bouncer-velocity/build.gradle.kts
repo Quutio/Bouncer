@@ -29,8 +29,28 @@ dependencies {
 tasks.withType<ShadowJar> {
     mergeServiceFiles()
 
-    isEnableRelocation = true
-    relocationPrefix = "fi.joniaromaa.bouncer.libs"
+    relocate("android", "fi.joniaromaa.bouncer.libs.android")
+
+    relocate("com.google.api", "fi.joniaromaa.bouncer.libs.com.google.api")
+    relocate("com.google.cloud", "fi.joniaromaa.bouncer.libs.com.google.cloud")
+    relocate("com.google.common", "fi.joniaromaa.bouncer.libs.com.google.common")
+    relocate("com.google.errorprone", "fi.joniaromaa.bouncer.libs.com.google.errorprone")
+    relocate("com.google.geo", "fi.joniaromaa.bouncer.libs.com.google.geo")
+    relocate("com.google.gson", "fi.joniaromaa.bouncer.libs.com.google.gson")
+    relocate("com.google.j2objc", "fi.joniaromaa.bouncer.libs.com.google.j2objc")
+    relocate("com.google.logging", "fi.joniaromaa.bouncer.libs.com.google.logging")
+    relocate("com.google.longrunning", "fi.joniaromaa.bouncer.libs.com.google.longrunning")
+    relocate("com.google.protobuf", "fi.joniaromaa.bouncer.libs.com.google.protobuf")
+    relocate("com.google.rpc", "fi.joniaromaa.bouncer.libs.com.google.rpc")
+    relocate("com.google.thirdparty", "fi.joniaromaa.bouncer.libs.com.google.thirdparty")
+    relocate("com.google.type", "fi.joniaromaa.bouncer.libs.com.google.type")
+
+    relocate("_COUROUTINE", "fi.joniaromaa.bouncer.libs._COUROUTINE")
+    relocate("io", "fi.joniaromaa.bouncer.libs.io")
+    relocate("javax.annotation", "fi.joniaromaa.bouncer.libs.javax.annotation")
+    relocate("kotlin", "fi.joniaromaa.bouncer.libs.kotlin")
+    relocate("kotlinx", "fi.joniaromaa.bouncer.libs.kotlinx")
+    relocate("org", "fi.joniaromaa.bouncer.libs.org")
 }
 
 tasks.named("assemble").configure {

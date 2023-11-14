@@ -1,5 +1,7 @@
 plugins {
     `java-library`
+
+    `maven-publish`
 }
 
 java {

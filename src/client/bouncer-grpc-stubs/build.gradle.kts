@@ -7,6 +7,8 @@ plugins {
     id("com.google.protobuf")
 
     idea
+
+    `maven-publish`
 }
 
 group = "fi.joniaromaa"

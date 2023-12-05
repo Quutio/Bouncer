@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Bouncer.Grpc;
 using Bouncer.Server.Server;
@@ -28,7 +28,10 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 			
 		try
 		{
-			while (await requestStream.MoveNext())
+			using CancellationTokenSource timeoutTokenSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+			//await using Timer timeoutTimer = new(static state => ((CancellationTokenSource)state!).Cancel(), timeoutTokenSource, TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
+
+			while (await requestStream.MoveNext(timeoutTokenSource.Token))
 			{
 				ServerSessionRequest request = requestStream.Current;
 
@@ -52,7 +55,7 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 							{
 								ServerId = (int)server.Id
 							}
-						});
+						}, timeoutTokenSource.Token);
 
 						break;
 					}
@@ -69,7 +72,7 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 						await responseStream.WriteAsync(new ServerSessionResponse
 						{
 							RequestId = request.RequestId
-						});
+						}, timeoutTokenSource.Token);
 
 						break;
 					}
@@ -85,7 +88,7 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 						await responseStream.WriteAsync(new ServerSessionResponse
 						{
 							RequestId = request.RequestId
-						});
+						}, timeoutTokenSource.Token);
 
 						break;
 					}
@@ -188,7 +191,7 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 
 			await listener.Listen(responseStream, context.CancellationToken);
 		}
-		catch(OperationCanceledException)
+		catch (OperationCanceledException)
 		{
 			//Swallow
 		}

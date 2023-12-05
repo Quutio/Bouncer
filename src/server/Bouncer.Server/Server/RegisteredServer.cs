@@ -73,8 +73,7 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 		foreach (KeyValuePair<Guid, long?> kvp in this.players)
 		{
 			long? timeout = kvp.Value;
-
-			if (time < timeout)
+			if (timeout is null || time < timeout)
 			{
 				continue;
 			}

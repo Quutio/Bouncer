@@ -33,7 +33,7 @@ class BukkitBouncerPlugin : JavaPlugin()
 			this.config.type,
 
 			InetSocketAddress.createUnresolved(
-				this.server.ip.ifEmpty {
+				System.getenv("SERVER_IP") ?: this.server.ip.ifEmpty {
 					//Figure out this machines local address which can then be used to connect to this server
 					DatagramSocket().use { socket ->
 						socket.connect(InetAddress.getByName("1.1.1.1"), 53)

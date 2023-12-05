@@ -1,4 +1,5 @@
-﻿using Bouncer.Server.Games;
+﻿using System;
+using Bouncer.Server.Games;
 using Bouncer.Server.Server;
 using Bouncer.Server.Services;
 using Microsoft.AspNetCore.Builder;
@@ -7,6 +8,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<HostOptions>(options =>
+{
+	//We should not execute much shutdown logic so force early timeout
+	options.ShutdownTimeout = TimeSpan.FromSeconds(3);
+});
 
 builder.Services.AddGrpc();
 

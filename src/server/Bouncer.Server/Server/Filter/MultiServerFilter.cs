@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace Bouncer.Server.Server.Filter;
+﻿namespace Bouncer.Server.Server.Filter;
 
 internal sealed class MultiServerFilter : IServerFilter
 {

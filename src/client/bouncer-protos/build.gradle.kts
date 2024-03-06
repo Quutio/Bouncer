@@ -1,9 +1,7 @@
 plugins {
-    `java-library`
-
-    `maven-publish`
+	`java-library`
 }
 
 java {
-    sourceSets.getByName("main").resources.srcDir("../../grpc")
+	sourceSets.getByName("main").resources.srcDir("../../grpc")
 }

@@ -1,18 +1,12 @@
-﻿using System.Threading.Tasks;
-using Bouncer.Grpc;
+﻿using Bouncer.Grpc;
 using Bouncer.Server.Games;
 using Grpc.Core;
 
 namespace Bouncer.Server.Services;
 
-internal sealed class GrpcGameService : GameService.GameServiceBase
+internal sealed class GrpcGameService(GameManager gameManager) : GameService.GameServiceBase
 {
-	private readonly GameManager gameManager;
-
-	public GrpcGameService(GameManager gameManager)
-	{
-		this.gameManager = gameManager;
-	}
+	private readonly GameManager gameManager = gameManager;
 
 	public override Task<GameRegisterResponse> Register(GameRegisterRequest request, ServerCallContext context)
 	{

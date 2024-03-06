@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Threading;
+﻿using System.Collections.Concurrent;
 using Bouncer.Grpc;
 using Bouncer.Server.Logging;
 using Bouncer.Server.Server.Listener;
-using Microsoft.Extensions.Logging;
 
 namespace Bouncer.Server.Server;
 
@@ -23,7 +19,7 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 	public ServerData Data { get; set; }
 
 	private readonly CancellationTokenSource cancellationTokenSource;
-		
+
 	private readonly ConcurrentDictionary<Guid, long?> players;
 
 	internal RegisteredServer(ServerManager serverManager, ILogger<RegisteredServer> logger, uint id, ServerData data)
@@ -83,7 +79,7 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 			{
 				continue;
 			}
-			
+
 			this.logger.PlayerReserveSlotTimeoutServer(kvp.Key, this.Name, this.Id, this.players.Count);
 		}
 	}

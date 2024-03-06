@@ -67,7 +67,7 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 						this@VelocityBouncerPlugin.serversByName.remove(server.name)
 						this@VelocityBouncerPlugin.proxy.unregisterServer(ServerInfo(server.name, server.address))
 					}
-					else -> {}
+					else -> Unit
 				}
 			}
 		}
@@ -92,6 +92,5 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 	@Subscribe
 	fun onProxyShutdown(event: ProxyShutdownEvent)
 	{
-
 	}
 }

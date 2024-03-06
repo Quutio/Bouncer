@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using Bouncer.Server.Server;
+﻿using Bouncer.Server.Server;
 
 namespace Bouncer.Server.Games.Server;
 
@@ -13,16 +12,14 @@ internal sealed class ServerGameManager
 	{
 		this.Server = server;
 
-		this.gamesById = new Dictionary<uint, RegisteredGame>();
+		this.gamesById = [];
 	}
 
 	internal void Register(RegisteredGame game)
 	{
-
 	}
 
 	internal void Unregister()
 	{
-
 	}
 }

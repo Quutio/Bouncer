@@ -1,0 +1,26 @@
+[versions]
+kotlin = "1.9.22"
+kotlinx = "1.8.0"
+ptotobuf = "3.25.3"
+grpc-protobuf = "1.61.0"
+grpc-kotlin = "1.4.1"
+velocity = "3.3.0-SNAPSHOT"
+
+[libraries]
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin" }
+kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx" }
+ptotobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin", version.ref = "ptotobuf" }
+ptotobuf-protoc = { module = "com.google.protobuf:protoc", version.ref = "ptotobuf" }
+grpc-protobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc-protobuf" }
+grpc-plugin = { module = "io.grpc:protoc-gen-grpc-java", version.ref = "grpc-protobuf" }
+grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
+grpc-kotlin-plugin = { module = "io.grpc:protoc-gen-grpc-kotlin", version.ref = "grpc-kotlin" }
+
+velocity = { module = "com.velocitypowered:velocity-api", version.ref = "velocity" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+protobuf = { id = "com.google.protobuf", version = "0.9.4" }
+shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
+spotless = { id = "com.diffplug.spotless", version = "6.25.0" }

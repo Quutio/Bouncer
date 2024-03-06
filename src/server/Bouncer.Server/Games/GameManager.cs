@@ -5,18 +5,11 @@ using Bouncer.Server.Server;
 
 namespace Bouncer.Server.Games;
 
-internal sealed class GameManager
+internal sealed class GameManager(ServerManager serverManager)
 {
-	private readonly ServerManager serverManager;
+	private readonly ServerManager serverManager = serverManager;
 
-	private readonly ConcurrentDictionary<uint, ServerGameManager> gamesByServer;
-
-	public GameManager(ServerManager serverManager)
-	{
-		this.serverManager = serverManager;
-
-		this.gamesByServer = new ConcurrentDictionary<uint, ServerGameManager>();
-	}
+	private readonly ConcurrentDictionary<uint, ServerGameManager> gamesByServer = [];
 
 	internal void Register(uint serverId, GameData gameData)
 	{
@@ -27,7 +20,7 @@ internal sealed class GameManager
 				//There's no server registered with this id..
 				return;
 			}
-				
+
 			while (true)
 			{
 				manager = new ServerGameManager(server);

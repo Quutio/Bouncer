@@ -6,6 +6,5 @@ internal sealed class GrpcQueueService : QueueService.QueueServiceBase
 {
 	public GrpcQueueService()
 	{
-
 	}
 }

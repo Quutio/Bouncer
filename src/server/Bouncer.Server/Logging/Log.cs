@@ -1,7 +1,4 @@
-﻿using System;
-using Microsoft.Extensions.Logging;
-
-namespace Bouncer.Server.Logging;
+﻿namespace Bouncer.Server.Logging;
 
 internal static partial class Log
 {

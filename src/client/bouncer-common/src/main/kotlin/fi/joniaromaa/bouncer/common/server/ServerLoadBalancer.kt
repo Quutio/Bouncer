@@ -32,7 +32,8 @@ internal class ServerLoadBalancer(private val stub: ServerServiceGrpcKt.ServerSe
 
 	init
 	{
-		GlobalScope.launch {
+		GlobalScope.launch()
+		{
 			while (true)
 			{
 				try
@@ -44,7 +45,7 @@ internal class ServerLoadBalancer(private val stub: ServerServiceGrpcKt.ServerSe
 					e.printStackTrace()
 				}
 
-				delay(TimeUnit.SECONDS.toMillis(3)) //Wait for 3s before reconnecting
+				delay(TimeUnit.SECONDS.toMillis(3)) // Wait for 3s before reconnecting
 			}
 		}
 	}
@@ -53,7 +54,8 @@ internal class ServerLoadBalancer(private val stub: ServerServiceGrpcKt.ServerSe
 	{
 		try
 		{
-			this.stub.session(this.requestChannel.receiveAsFlow()).collect { response ->
+			this.stub.session(this.requestChannel.receiveAsFlow()).collect()
+			{ response ->
 				this.requestResponse.remove(response.requestId)?.complete(response)
 			}
 		}
@@ -61,9 +63,10 @@ internal class ServerLoadBalancer(private val stub: ServerServiceGrpcKt.ServerSe
 		{
 			for (server: BouncerServer in this.servers.values)
 			{
-				server.lostConnection()	//Register the server async
+				server.lostConnection()	// Register the server async
 
-				GlobalScope.launch {
+				GlobalScope.launch()
+				{
 					this@ServerLoadBalancer.registerServer(server)
 				}
 			}
@@ -90,21 +93,25 @@ internal class ServerLoadBalancer(private val stub: ServerServiceGrpcKt.ServerSe
 
 	override fun registerServer(info: BouncerServerInfo): IBouncerServer
 	{
-		val server = BouncerServer(this, info) //Register the server async
-		
-		GlobalScope.launch {
+		val server = BouncerServer(this, info) // Register the server async
+
+		GlobalScope.launch()
+		{
 			this@ServerLoadBalancer.registerServer(server)
 		}
 
-		//Return the server instance already so it can be mutated
+		// Return the server instance already so it can be mutated
 		return server
 	}
 
 	private suspend fun registerServer(server: BouncerServer)
 	{
-		val response: ServerSessionResponse = this@ServerLoadBalancer.sendRequestAsync(ServerSessionRequest.newBuilder()
-			.setRegistration(ServerRegistrationRequest.newBuilder()
-				.setData(ServerData.newBuilder()
+		val response: ServerSessionResponse = this@ServerLoadBalancer.sendRequestAsync(
+			ServerSessionRequest.newBuilder()
+			.setRegistration(
+				ServerRegistrationRequest.newBuilder()
+				.setData(
+					ServerData.newBuilder()
 					.setName(server.info.name)
 					.setGroup(server.info.group)
 					.setType(server.info.type)
@@ -114,10 +121,10 @@ internal class ServerLoadBalancer(private val stub: ServerServiceGrpcKt.ServerSe
 			)
 		).await()
 
-		val serverId: Int = response.registration.serverId //Never add it to the list of servers if we have been unregistered
+		val serverId: Int = response.registration.serverId // Never add it to the list of servers if we have been unregistered
 		if (!server.registered(serverId))
 		{
-			//Also send the unregistration so it gets out of the load balancer queue
+			// Also send the unregistration so it gets out of the load balancer queue
 			return this@ServerLoadBalancer.sendUnregisterServer(serverId)
 		}
 
@@ -131,7 +138,7 @@ internal class ServerLoadBalancer(private val stub: ServerServiceGrpcKt.ServerSe
 
 	private fun unregisterServer(server: BouncerServer)
 	{
-		//Check whatever we have already been unregistered or we never were fully unregister
+		// Check whatever we have already been unregistered or we never were fully unregister
 		if (!server.unregister())
 		{
 			return
@@ -144,8 +151,10 @@ internal class ServerLoadBalancer(private val stub: ServerServiceGrpcKt.ServerSe
 
 	private fun sendUnregisterServer(serverId: Int)
 	{
-		this@ServerLoadBalancer.sendRequestForgetAsync(ServerSessionRequest.newBuilder()
-			.setUnregistration(ServerUnregistrationRequest.newBuilder()
+		this@ServerLoadBalancer.sendRequestForgetAsync(
+			ServerSessionRequest.newBuilder()
+			.setUnregistration(
+				ServerUnregistrationRequest.newBuilder()
 				.setServerId(serverId)
 			)
 		)
@@ -158,7 +167,7 @@ internal class ServerLoadBalancer(private val stub: ServerServiceGrpcKt.ServerSe
 
 	internal fun shutdown()
 	{
-		for(server: BouncerServer in this.servers.values)
+		for (server: BouncerServer in this.servers.values)
 		{
 			this.unregisterServer(server)
 		}

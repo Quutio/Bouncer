@@ -1,3 +1,9 @@
+pluginManagement {
+	plugins {
+		id("com.diffplug.spotless") version "6.25.0"
+	}
+}
+
 rootProject.name = "bouncer"
 
 include("bouncer-bukkit")

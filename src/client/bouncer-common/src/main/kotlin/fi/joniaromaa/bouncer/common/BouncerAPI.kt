@@ -24,15 +24,18 @@ open class BouncerAPI(endpoint: String) : IBouncerAPI
 	override val gameLoadBalancer: IGameLoadBalancer
 		get() = this._gameLoadBalancer
 
-	override fun allServers(): Map<String, BouncerServerInfo> {
+	override fun allServers(): Map<String, BouncerServerInfo>
+	{
 		throw UnsupportedOperationException("Only supported on proxy")
 	}
 
-	override fun serversByGroup(group: String): Map<String, BouncerServerInfo> {
+	override fun serversByGroup(group: String): Map<String, BouncerServerInfo>
+	{
 		throw UnsupportedOperationException("Only supported on proxy")
 	}
 
-	override fun serverByName(name: String): BouncerServerInfo? {
+	override fun serverByName(name: String): BouncerServerInfo?
+	{
 		throw UnsupportedOperationException("Only supported on proxy")
 	}
 

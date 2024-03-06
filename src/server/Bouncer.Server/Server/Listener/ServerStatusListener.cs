@@ -1,9 +1,7 @@
-﻿using Bouncer.Grpc;
-using Grpc.Core;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
+﻿using System.Threading.Tasks.Dataflow;
+using Bouncer.Grpc;
 using Bouncer.Server.Server.Filter;
+using Grpc.Core;
 
 namespace Bouncer.Server.Server.Listener;
 
@@ -12,7 +10,7 @@ internal sealed class ServerStatusListener
 	private readonly ServerManager serverManager;
 
 	private readonly IServerFilter? filter;
-		
+
 	private readonly BufferBlock<ServerStatusUpdate> updates;
 
 	internal ServerStatusListener(ServerManager serverManager, IServerFilter? filter)
@@ -20,7 +18,7 @@ internal sealed class ServerStatusListener
 		this.serverManager = serverManager;
 
 		this.filter = filter;
-			
+
 		this.updates = new BufferBlock<ServerStatusUpdate>();
 	}
 
@@ -70,10 +68,10 @@ internal sealed class ServerStatusListener
 				//Try to first receive sync to avoid the async overhead
 				if (!this.updates.TryReceive(out ServerStatusUpdate? update))
 				{
-					update = await this.updates.ReceiveAsync(cancellationToken);
+					update = await this.updates.ReceiveAsync(cancellationToken).ConfigureAwait(false);
 				}
 
-				await responseStream.WriteAsync(update);
+				await responseStream.WriteAsync(update, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		finally

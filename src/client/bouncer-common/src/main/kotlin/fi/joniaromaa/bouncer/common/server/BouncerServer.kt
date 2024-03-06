@@ -5,7 +5,7 @@ import fi.joniaromaa.bouncer.api.server.IBouncerServer
 import fi.joniaromaa.bouncer.grpc.ServerStatusUpdate
 import fi.joniaromaa.bouncer.grpc.ServerStatusUserJoin
 import fi.joniaromaa.bouncer.grpc.ServerStatusUserQuit
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 
 internal class BouncerServer(private val loadBalancer: ServerLoadBalancer, internal val info: BouncerServerInfo) : IBouncerServer
@@ -19,7 +19,7 @@ internal class BouncerServer(private val loadBalancer: ServerLoadBalancer, inter
 
 	internal fun registered(id: Int): Boolean
 	{
-		//If we fail to transition from NONE -> REGISTERING then we might already be unregistering
+		// If we fail to transition from NONE -> REGISTERING then we might already be unregistering
 		if (!this.state.compareAndSet(RegistrationState.NONE, RegistrationState.REGISTERING))
 		{
 			return false
@@ -35,7 +35,7 @@ internal class BouncerServer(private val loadBalancer: ServerLoadBalancer, inter
 			}
 		}
 
-		//If we successfully to transition from REGISTERING -> REGISTERED then we are done
+		// If we successfully to transition from REGISTERING -> REGISTERED then we are done
 		if (this.state.compareAndSet(RegistrationState.REGISTERING, RegistrationState.REGISTERED))
 		{
 			return true
@@ -78,9 +78,11 @@ internal class BouncerServer(private val loadBalancer: ServerLoadBalancer, inter
 
 	private fun sendConfirmJoin(uniqueId: UUID)
 	{
-		this.loadBalancer.sendUpdateAsync(ServerStatusUpdate.newBuilder()
+		this.loadBalancer.sendUpdateAsync(
+			ServerStatusUpdate.newBuilder()
 			.setServerId(this.id)
-			.setUserJoin(ServerStatusUserJoin.newBuilder()
+			.setUserJoin(
+				ServerStatusUserJoin.newBuilder()
 				.setUser(uniqueId.toString())
 				.build()
 			).build()
@@ -101,9 +103,11 @@ internal class BouncerServer(private val loadBalancer: ServerLoadBalancer, inter
 
 	private fun sendConfirmLeave(uniqueId: UUID)
 	{
-		this.loadBalancer.sendUpdateAsync(ServerStatusUpdate.newBuilder()
+		this.loadBalancer.sendUpdateAsync(
+			ServerStatusUpdate.newBuilder()
 			.setServerId(this.id)
-			.setUserQuit(ServerStatusUserQuit.newBuilder()
+			.setUserQuit(
+				ServerStatusUserQuit.newBuilder()
 				.setUser(uniqueId.toString())
 				.build()
 			).build()
@@ -112,16 +116,16 @@ internal class BouncerServer(private val loadBalancer: ServerLoadBalancer, inter
 
 	internal fun unregister(): Boolean
 	{
-		val state: RegistrationState = this.state.getAndSet(RegistrationState.UNREGISTERED)	//The registration hasn't even started yet
+		val state: RegistrationState = this.state.getAndSet(RegistrationState.UNREGISTERED)	// The registration hasn't even started yet
 		if (state == RegistrationState.NONE)
 		{
 			return false
 		}
 
-		//If we aren't in the REGISTERED state then we shouldn't call unregister
-		//This could be because we are in the progress of registration which
-		//then correctly handles the cancellation by itself
-		//Or we could already be in the UNREGISTER state and don't need to do anything
+		// If we aren't in the REGISTERED state then we shouldn't call unregister
+		// This could be because we are in the progress of registration which
+		// then correctly handles the cancellation by itself
+		// Or we could already be in the UNREGISTER state and don't need to do anything
 		if (state != RegistrationState.REGISTERED)
 		{
 			return false

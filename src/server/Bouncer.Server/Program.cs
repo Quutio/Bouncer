@@ -1,11 +1,6 @@
-﻿using System;
-using Bouncer.Server.Games;
+﻿using Bouncer.Server.Games;
 using Bouncer.Server.Server;
 using Bouncer.Server.Services;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -39,7 +34,7 @@ app.MapGrpcService<GrpcQueueService>();
 
 app.MapGet("/", async context =>
 {
-	await context.Response.WriteAsync("Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
+	await context.Response.WriteAsync("Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909").ConfigureAwait(false);
 });
 
-await app.RunAsync();
+await app.RunAsync().ConfigureAwait(false);

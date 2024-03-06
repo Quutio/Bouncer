@@ -1,14 +1,9 @@
-﻿using Bouncer.Grpc;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using System.Threading.Tasks;
+using Bouncer.Grpc;
 using Bouncer.Server.Logging;
 using Bouncer.Server.Server.Filter;
 using Bouncer.Server.Server.Listener;
-using Microsoft.Extensions.Logging;
 
 namespace Bouncer.Server.Server;
 
@@ -32,7 +27,7 @@ internal sealed class ServerManager
 		this.serversById = new ConcurrentDictionary<uint, RegisteredServer>();
 		this.serversByName = new ConcurrentDictionary<string, RegisteredServer>();
 
-		this.listeners = new List<ServerStatusListener>();
+		this.listeners = [];
 
 		_ = this.Cleanup();
 	}
@@ -63,7 +58,7 @@ internal sealed class ServerManager
 
 		return server;
 	}
-		
+
 	internal void Unregister(RegisteredServer server)
 	{
 		if (!this.serversById.TryRemove(server.Id, out _))
@@ -114,7 +109,7 @@ internal sealed class ServerManager
 				server.Cleanup();
 			}
 
-			await Task.Delay(TimeSpan.FromSeconds(1));
+			await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
 		}
 	}
 

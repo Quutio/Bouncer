@@ -2,8 +2,8 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
-		<Nullable>enable</Nullable>
 		<UserSecretsId>210cdb06-48dc-4161-8bfd-56166a9f21c0</UserSecretsId>
+		<VersionPrefix>1.0.0</VersionPrefix>
 	</PropertyGroup>
 
 	<ItemGroup>

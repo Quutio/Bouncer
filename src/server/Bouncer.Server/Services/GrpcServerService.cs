@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Bouncer.Grpc;
+﻿using Bouncer.Grpc;
 using Bouncer.Server.Server;
 using Bouncer.Server.Server.Filter;
 using Bouncer.Server.Server.Listener;
@@ -13,25 +8,20 @@ using Grpc.Core;
 
 namespace Bouncer.Server.Services;
 
-internal sealed class GrpcServerService : ServerService.ServerServiceBase
+internal sealed class GrpcServerService(ServerManager serverManager) : ServerService.ServerServiceBase
 {
-	private readonly ServerManager serverManager;
-
-	public GrpcServerService(ServerManager serverManager)
-	{
-		this.serverManager = serverManager;
-	}
+	private readonly ServerManager serverManager = serverManager;
 
 	public override async Task Session(IAsyncStreamReader<ServerSessionRequest> requestStream, IServerStreamWriter<ServerSessionResponse> responseStream, ServerCallContext context)
 	{
-		Dictionary<uint, RegisteredServer> servers = new();
-			
+		Dictionary<uint, RegisteredServer> servers = [];
+
 		try
 		{
 			using CancellationTokenSource timeoutTokenSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
 			//await using Timer timeoutTimer = new(static state => ((CancellationTokenSource)state!).Cancel(), timeoutTokenSource, TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
 
-			while (await requestStream.MoveNext(timeoutTokenSource.Token))
+			while (await requestStream.MoveNext(timeoutTokenSource.Token).ConfigureAwait(false))
 			{
 				ServerSessionRequest request = requestStream.Current;
 
@@ -41,6 +31,7 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 					{
 						break;
 					}
+
 					case ServerSessionRequest.RequestOneofCase.Registration:
 					{
 						RegisteredServer server = this.serverManager.Register(request.Registration.Data);
@@ -55,10 +46,11 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 							{
 								ServerId = (int)server.Id
 							}
-						}, timeoutTokenSource.Token);
+						}, timeoutTokenSource.Token).ConfigureAwait(false);
 
 						break;
 					}
+
 					case ServerSessionRequest.RequestOneofCase.Unregistration:
 					{
 						uint serverId = (uint)request.Unregistration.ServerId;
@@ -66,16 +58,17 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 						{
 							continue;
 						}
-								
+
 						this.serverManager.Unregister(server);
 
 						await responseStream.WriteAsync(new ServerSessionResponse
 						{
 							RequestId = request.RequestId
-						}, timeoutTokenSource.Token);
+						}, timeoutTokenSource.Token).ConfigureAwait(false);
 
 						break;
 					}
+
 					case ServerSessionRequest.RequestOneofCase.Update:
 					{
 						if (!servers.TryGetValue((uint)request.Update.ServerId, out RegisteredServer? server))
@@ -88,7 +81,7 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 						await responseStream.WriteAsync(new ServerSessionResponse
 						{
 							RequestId = request.RequestId
-						}, timeoutTokenSource.Token);
+						}, timeoutTokenSource.Token).ConfigureAwait(false);
 
 						break;
 					}
@@ -118,6 +111,7 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 
 				break;
 			}
+
 			case ServerStatusUpdate.UpdateOneofCase.UserQuit:
 			{
 				server.Quit(Guid.Parse(update.UserQuit.User));
@@ -189,7 +183,7 @@ internal sealed class GrpcServerService : ServerService.ServerServiceBase
 		{
 			ServerStatusListener listener = this.serverManager.CreateServerListener(this.CreateFilter(request.Filter));
 
-			await listener.Listen(responseStream, context.CancellationToken);
+			await listener.Listen(responseStream, context.CancellationToken).ConfigureAwait(false);
 		}
 		catch (OperationCanceledException)
 		{

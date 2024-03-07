@@ -5,6 +5,6 @@ version: 1.0
 api-version: 1.13
 
 author: Joni Aromaa (isokissa3)
-website: https://joniaromaa.fi
+website: https://quut.io
 
-main: fi.joniaromaa.bouncer.bukkit.BukkitBouncerPlugin
+main: io.quut.bouncer.bukkit.BukkitBouncerPlugin

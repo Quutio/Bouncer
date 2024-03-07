@@ -8,7 +8,7 @@ plugins {
 	alias(libs.plugins.protobuf)
 }
 
-group = "fi.joniaromaa"
+group = "io.quut"
 version = "1.0-SNAPSHOT"
 
 dependencies {

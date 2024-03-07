@@ -10,7 +10,7 @@ plugins {
 	alias(libs.plugins.spotless)
 }
 
-group = "fi.joniaromaa"
+group = "io.quut"
 version = "1.0-SNAPSHOT"
 
 allprojects {
@@ -41,7 +41,7 @@ allprojects {
 					}
 				).run {
 					if (allman) {
-						this.customRuleSets(listOf("fi.joniaromaa:linter:1.0-SNAPSHOT"))
+						// this.customRuleSets(listOf("io.quut:linter:1.0-SNAPSHOT"))
 					}
 				}
 

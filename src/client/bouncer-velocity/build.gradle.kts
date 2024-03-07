@@ -7,7 +7,7 @@ plugins {
 	alias(libs.plugins.shadow)
 }
 
-group = "fi.joniaromaa"
+group = "io.quut"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -53,14 +53,16 @@ tasks {
 	withType<ShadowJar> {
 		mergeServiceFiles()
 
-		relocate("com.google", "fi.joniaromaa.bouncer.libs.com.google") {
+		relocate("com.google", "io.quut.bouncer.libs.com.google") {
 			exclude("com.google.inject.**")
 		}
-		relocate("io", "fi.joniaromaa.bouncer.libs.io")
-		relocate("javax.annotation", "fi.joniaromaa.bouncer.libs.javax.annotation")
-		relocate("kotlin", "fi.joniaromaa.bouncer.libs.kotlin")
-		relocate("kotlinx", "fi.joniaromaa.bouncer.libs.kotlinx")
-		relocate("org", "fi.joniaromaa.bouncer.libs.org")
+		relocate("io", "io.quut.bouncer.libs.io") {
+			exclude("io.quut.**")
+		}
+		relocate("javax.annotation", "io.quut.bouncer.libs.javax.annotation")
+		relocate("kotlin", "io.quut.bouncer.libs.kotlin")
+		relocate("kotlinx", "io.quut.bouncer.libs.kotlinx")
+		relocate("org", "io.quut.bouncer.libs.org")
 	}
 }
 

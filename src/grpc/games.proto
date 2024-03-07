@@ -2,7 +2,7 @@
 
 option csharp_namespace = "Bouncer.Grpc";
 
-option java_package = "fi.joniaromaa.bouncer.grpc";
+option java_package = "io.quut.bouncer.grpc";
 option java_multiple_files = true;
 
 package games;

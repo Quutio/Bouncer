@@ -167,6 +167,10 @@ ij_kotlin_packages_to_use_import_on_demand = unset
 
 [*.kt]
 ktlint_standard_indent = disabled
+ktlint_standard_string-template-indent = disabled
+ktlint_standard_curly-spacing = disabled
+ktlint_standard_keyword-spacing = disabled
+ktlint_standard_no-line-break-after-else = disabled
 ktlint_standard_function-signature = disabled
 ktlint_standard_function-start-of-body-spacing = disabled
 ktlint_standard_unnecessary-parentheses-before-trailing-lambda = disabled

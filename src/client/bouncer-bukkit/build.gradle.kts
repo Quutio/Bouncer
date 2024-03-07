@@ -20,16 +20,21 @@ dependencies {
 
 	compileOnly("com.destroystokyo.paper:paper-api:1.12.2-R0.1-SNAPSHOT")
 
-	runtimeOnly("io.grpc:grpc-netty:1.38.1")
-
 	implementation("org.spongepowered:configurate-yaml:3.7.1")
 }
 
 tasks.withType<ShadowJar> {
 	mergeServiceFiles()
 
-	isEnableRelocation = true
-	relocationPrefix = "fi.joniaromaa.bouncer.libs"
+	relocate("com.google", "fi.joniaromaa.bouncer.libs.com.google")
+	relocate("io", "fi.joniaromaa.bouncer.libs.io")
+	relocate("javax.annotation", "fi.joniaromaa.bouncer.libs.javax.annotation")
+	relocate("kotlin", "fi.joniaromaa.bouncer.libs.kotlin")
+	relocate("kotlinx", "fi.joniaromaa.bouncer.libs.kotlinx")
+	relocate("ninja", "fi.joniaromaa.bouncer.libs.ninja")
+	relocate("org", "fi.joniaromaa.bouncer.libs.org") {
+		exclude("org.bukkit.**")
+	}
 }
 
 tasks.named("assemble").configure {

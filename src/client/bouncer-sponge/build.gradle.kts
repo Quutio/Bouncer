@@ -1,23 +1,19 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.spongepowered.gradle.plugin.config.PluginLoaders
 import org.spongepowered.plugin.metadata.model.PluginDependency
 
 plugins {
 	alias(libs.plugins.kotlin.jvm)
 	alias(libs.plugins.shadow)
-	id("org.spongepowered.gradle.plugin") version "2.0.0"
+	alias(libs.plugins.sponge)
 }
 
 group = "fi.joniaromaa"
 version = "1.0-SNAPSHOT"
 
-repositories {
-	mavenCentral()
-}
-
 dependencies {
 	implementation(project(":bouncer-common"))
-
-	runtimeOnly("io.grpc:grpc-netty:1.38.1")
 }
 
 sponge {
@@ -49,32 +45,45 @@ sponge {
 	}
 }
 
-val javaTarget = 17 // Sponge targets a minimum of Java 17
+val targetJava = 17
+val targetJavaVersion = JavaVersion.toVersion(targetJava)
 java {
-	sourceCompatibility = JavaVersion.toVersion(javaTarget)
-	targetCompatibility = JavaVersion.toVersion(javaTarget)
-}
-
-tasks.withType(JavaCompile::class).configureEach {
-	options.apply {
-		encoding = "utf-8" // Consistent source file encoding
-		if (JavaVersion.current().isJava10Compatible) {
-			release.set(javaTarget)
+	sourceCompatibility = targetJavaVersion
+	targetCompatibility = targetJavaVersion
+	if (JavaVersion.current() < targetJavaVersion) {
+		toolchain {
+			languageVersion.set(JavaLanguageVersion.of(targetJava))
 		}
 	}
 }
 
-// Make sure all tasks which produce archives (jar, sources jar, javadoc jar, etc) produce more consistent output
-tasks.withType(AbstractArchiveTask::class).configureEach {
-	isReproducibleFileOrder = true
-	isPreserveFileTimestamps = false
+tasks {
+	withType<JavaCompile> {
+		options.encoding = "UTF-8"
+		options.release.set(targetJava)
+	}
+
+	withType<KotlinCompile> {
+		kotlinOptions {
+			jvmTarget = targetJava.toString()
+		}
+	}
 }
 
-tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
+tasks.withType<ShadowJar> {
 	mergeServiceFiles()
 
-	isEnableRelocation = true
-	relocationPrefix = "fi.joniaromaa.bouncer.libs"
+	relocate("com.google", "fi.joniaromaa.bouncer.libs.com.google") {
+		exclude("com.google.inject.**")
+	}
+	relocate("io", "fi.joniaromaa.bouncer.libs.io")
+	relocate("javax.annotation", "fi.joniaromaa.bouncer.libs.javax.annotation")
+	relocate("kotlin", "fi.joniaromaa.bouncer.libs.kotlin")
+	relocate("kotlinx", "fi.joniaromaa.bouncer.libs.kotlinx")
+	relocate("org", "fi.joniaromaa.bouncer.libs.org") {
+		exclude("org.spongepowered.**")
+		exclude("org.apache.logging.**")
+	}
 }
 
 tasks.named("assemble").configure {

@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
 	`maven-publish`
+	`java-library`
 
 	alias(libs.plugins.kotlin.jvm)
 	alias(libs.plugins.shadow)
@@ -13,6 +14,7 @@ group = "fi.joniaromaa"
 version = "1.0-SNAPSHOT"
 
 allprojects {
+	apply(plugin = "java-library")
 	apply(plugin = "com.diffplug.spotless")
 
 	spotless {
@@ -66,9 +68,28 @@ allprojects {
 		mavenCentral()
 	}
 
-	tasks.withType<KotlinCompile> {
-		kotlinOptions {
-			jvmTarget = "17"
+	val targetJava = 11
+	val targetJavaVersion = JavaVersion.toVersion(targetJava)
+	java {
+		sourceCompatibility = targetJavaVersion
+		targetCompatibility = targetJavaVersion
+		if (JavaVersion.current() < targetJavaVersion) {
+			toolchain {
+				languageVersion.set(JavaLanguageVersion.of(targetJava))
+			}
+		}
+	}
+
+	tasks {
+		withType<JavaCompile> {
+			options.encoding = "UTF-8"
+			options.release.set(targetJava)
+		}
+
+		withType<KotlinCompile> {
+			kotlinOptions {
+				jvmTarget = targetJava.toString()
+			}
 		}
 	}
 }
@@ -104,11 +125,5 @@ subprojects {
 				}
 			}
 		}
-	}
-}
-
-java {
-	toolchain {
-		languageVersion.set(JavaLanguageVersion.of(11))
 	}
 }

@@ -20,6 +20,8 @@ dependencies {
 	api(libs.ptotobuf.kotlin)
 	api(libs.grpc.protobuf)
 	api(libs.grpc.kotlin.stub)
+
+	runtimeOnly(libs.grpc.netty)
 }
 
 protobuf {

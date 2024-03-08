@@ -17,7 +17,7 @@ dependencies {
 }
 
 sponge {
-	apiVersion("8.3.0-SNAPSHOT")
+	apiVersion("10.0.0")
 	license("MIT")
 	loader {
 		name(PluginLoaders.JAVA_PLAIN)

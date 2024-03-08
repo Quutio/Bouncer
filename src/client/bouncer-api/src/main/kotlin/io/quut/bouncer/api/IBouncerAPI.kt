@@ -1,13 +1,11 @@
 package io.quut.bouncer.api
 
-import io.quut.bouncer.api.game.IGameLoadBalancer
 import io.quut.bouncer.api.server.BouncerServerInfo
-import io.quut.bouncer.api.server.IServerLoadBalancer
+import io.quut.bouncer.api.server.IServerManager
 
 interface IBouncerAPI
 {
-	val serverLoadBalancer: IServerLoadBalancer
-	val gameLoadBalancer: IGameLoadBalancer
+	val serverManager: IServerManager
 
 	fun allServers(): Map<String, BouncerServerInfo>
 	fun serversByGroup(group: String): Map<String, BouncerServerInfo>

@@ -41,7 +41,6 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 						await responseStream.WriteAsync(new ServerSessionResponse
 						{
 							RequestId = request.RequestId,
-
 							Registration = new ServerRegistrationResponse
 							{
 								ServerId = (int)server.Id
@@ -89,6 +88,10 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 			}
 		}
 		catch (OperationCanceledException)
+		{
+			//Swallow
+		}
+		catch (IOException e) when (e.InnerException is OperationCanceledException)
 		{
 			//Swallow
 		}

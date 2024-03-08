@@ -3,11 +3,9 @@ package io.quut.bouncer.common
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import io.quut.bouncer.api.IBouncerAPI
-import io.quut.bouncer.api.game.IGameLoadBalancer
 import io.quut.bouncer.api.server.BouncerServerInfo
-import io.quut.bouncer.api.server.IServerLoadBalancer
-import io.quut.bouncer.common.game.GameLoadBalancer
-import io.quut.bouncer.common.server.ServerLoadBalancer
+import io.quut.bouncer.api.server.IServerManager
+import io.quut.bouncer.common.server.ServerManager
 import io.quut.bouncer.grpc.ServerServiceGrpcKt
 import java.util.concurrent.TimeUnit
 
@@ -16,13 +14,10 @@ open class BouncerAPI(endpoint: String) : IBouncerAPI
 	private val channel: ManagedChannel = ManagedChannelBuilder.forTarget(endpoint).usePlaintext().build()
 	private val stub: ServerServiceGrpcKt.ServerServiceCoroutineStub = ServerServiceGrpcKt.ServerServiceCoroutineStub(this.channel)
 
-	private val _serverLoadBalancer: ServerLoadBalancer = ServerLoadBalancer(this.stub)
-	private val _gameLoadBalancer: IGameLoadBalancer = GameLoadBalancer()
+	private val _serverManager: ServerManager = ServerManager(this.stub)
 
-	override val serverLoadBalancer: IServerLoadBalancer
-		get() = this._serverLoadBalancer
-	override val gameLoadBalancer: IGameLoadBalancer
-		get() = this._gameLoadBalancer
+	override val serverManager: IServerManager
+		get() = this._serverManager
 
 	override fun allServers(): Map<String, BouncerServerInfo>
 	{
@@ -46,8 +41,9 @@ open class BouncerAPI(endpoint: String) : IBouncerAPI
 
 	override fun shutdownGracefully()
 	{
-		this._serverLoadBalancer.shutdown()
+		this._serverManager.shutdown()
 
-		this.channel.shutdown().awaitTermination(1, TimeUnit.SECONDS)
+		this.channel.shutdown().awaitTermination(5, TimeUnit.SECONDS)
+		this.channel.shutdownNow()
 	}
 }

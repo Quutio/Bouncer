@@ -22,11 +22,16 @@ class BukkitBouncerPlugin : JavaPlugin()
 	private lateinit var bouncer: BouncerAPI
 	private lateinit var bouncerServer: IBouncerServer
 
-	override fun onEnable()
+	override fun onLoad()
 	{
 		this.saveDefaultConfig()
 		this.loadPluginConfig()
 
+		this.bouncer = BouncerAPI(config.apiUrl)
+	}
+
+	override fun onEnable()
+	{
 		val info = BouncerServerInfo(
 			this.config.name,
 			this.config.group,
@@ -47,8 +52,7 @@ class BukkitBouncerPlugin : JavaPlugin()
 			)
 		)
 
-		this.bouncer = BouncerAPI(config.apiUrl)
-		this.bouncerServer = this.bouncer.serverLoadBalancer.registerServer(info)
+		this.bouncerServer = this.bouncer.serverManager.registerServer(info)
 
 		for (player: Player in this.server.onlinePlayers)
 		{

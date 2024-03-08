@@ -2,23 +2,28 @@ package io.quut.bouncer.common.server
 
 import io.quut.bouncer.api.server.BouncerServerInfo
 import io.quut.bouncer.api.server.IBouncerServer
-import io.quut.bouncer.grpc.ServerStatusUpdate
-import io.quut.bouncer.grpc.ServerStatusUserJoin
-import io.quut.bouncer.grpc.ServerStatusUserQuit
+import io.quut.bouncer.grpc.serverStatusUpdate
+import io.quut.bouncer.grpc.serverStatusUserJoin
+import io.quut.bouncer.grpc.serverStatusUserQuit
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 
-internal class BouncerServer(private val loadBalancer: ServerLoadBalancer, internal val info: BouncerServerInfo) :
+internal class BouncerServer(internal val info: BouncerServerInfo) :
 	IBouncerServer
 {
 	private val state: AtomicReference<RegistrationState> = AtomicReference(RegistrationState.NONE)
 	private val players: MutableSet<UUID> = mutableSetOf()
 
+	private lateinit var session: ServerManagerSession
+
 	@Volatile
 	internal var id: Int = 0
 		private set
 
-	internal fun registered(id: Int): Boolean
+	internal val registered
+		get() = this.state.get() == RegistrationState.REGISTERED
+
+	internal fun registered(session: ServerManagerSession, id: Int): Boolean
 	{
 		// If we fail to transition from NONE -> REGISTERING then we might already be unregistering
 		if (!this.state.compareAndSet(RegistrationState.NONE, RegistrationState.REGISTERING))
@@ -26,6 +31,7 @@ internal class BouncerServer(private val loadBalancer: ServerLoadBalancer, inter
 			return false
 		}
 
+		this.session = session
 		this.id = id
 
 		synchronized(this.players)
@@ -56,62 +62,59 @@ internal class BouncerServer(private val loadBalancer: ServerLoadBalancer, inter
 		{
 			if (state)
 			{
-				this.players.add(uniqueId)
+				if (!this.players.add(uniqueId))
+				{
+					return
+				}
+
+				if (this.state.get() == RegistrationState.REGISTERED)
+				{
+					this.sendConfirmJoin(uniqueId)
+				}
 			}
 			else
 			{
-				this.players.remove(uniqueId)
+				if (!this.players.remove(uniqueId))
+				{
+					return
+				}
+
+				if (this.state.get() == RegistrationState.REGISTERED)
+				{
+					this.sendConfirmLeave(uniqueId)
+				}
 			}
 		}
 	}
 
-	override fun confirmJoin(uniqueId: UUID)
-	{
-		this.updateTransaction(uniqueId, true)
-
-		when (this.state.get())
-		{
-			RegistrationState.REGISTERED -> this.sendConfirmJoin(uniqueId)
-
-			else -> return
-		}
-	}
+	override fun confirmJoin(uniqueId: UUID) = this.updateTransaction(uniqueId, true)
+	override fun confirmLeave(uniqueId: UUID) = this.updateTransaction(uniqueId, false)
 
 	private fun sendConfirmJoin(uniqueId: UUID)
 	{
-		this.loadBalancer.sendUpdateAsync(
-			ServerStatusUpdate.newBuilder()
-			.setServerId(this.id)
-			.setUserJoin(
-				ServerStatusUserJoin.newBuilder()
-				.setUser(uniqueId.toString())
-				.build()
-			).build()
+		this.session.sendUpdate(
+			serverStatusUpdate()
+			{
+				this.serverId = this@BouncerServer.id
+				this.userJoin = serverStatusUserJoin()
+				{
+					this.user = uniqueId.toString()
+				}
+			}
 		)
-	}
-
-	override fun confirmLeave(uniqueId: UUID)
-	{
-		this.updateTransaction(uniqueId, false)
-
-		when (this.state.get())
-		{
-			RegistrationState.REGISTERED -> this.sendConfirmLeave(uniqueId)
-
-			else -> return
-		}
 	}
 
 	private fun sendConfirmLeave(uniqueId: UUID)
 	{
-		this.loadBalancer.sendUpdateAsync(
-			ServerStatusUpdate.newBuilder()
-			.setServerId(this.id)
-			.setUserQuit(
-				ServerStatusUserQuit.newBuilder()
-				.setUser(uniqueId.toString())
-				.build()
-			).build()
+		this.session.sendUpdate(
+			serverStatusUpdate()
+			{
+				this.serverId = this@BouncerServer.id
+				this.userQuit = serverStatusUserQuit()
+				{
+					this.user = uniqueId.toString()
+				}
+			}
 		)
 	}
 

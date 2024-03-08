@@ -1,6 +1,6 @@
 package io.quut.bouncer.api.server
 
-import java.util.*
+import java.util.UUID
 
 interface IBouncerServer
 {

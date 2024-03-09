@@ -115,6 +115,7 @@ message ServerJoinRequest {
 }
 
 message ServerFilter {
+	bool inverse = 4;
 	oneof condition {
 		ServerFilterName name = 1;
 		ServerFilterGroup group = 2;

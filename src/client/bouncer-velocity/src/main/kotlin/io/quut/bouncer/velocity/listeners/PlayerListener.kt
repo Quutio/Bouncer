@@ -1,94 +1,198 @@
 package io.quut.bouncer.velocity.listeners
 
+import com.google.common.cache.Cache
+import com.google.common.cache.CacheBuilder
 import com.velocitypowered.api.event.PostOrder
 import com.velocitypowered.api.event.Subscribe
+import com.velocitypowered.api.event.connection.DisconnectEvent
+import com.velocitypowered.api.event.connection.PostLoginEvent
 import com.velocitypowered.api.event.player.KickedFromServerEvent
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent
+import com.velocitypowered.api.event.player.ServerConnectedEvent
 import com.velocitypowered.api.proxy.Player
 import com.velocitypowered.api.proxy.server.RegisteredServer
 import io.quut.bouncer.api.server.BouncerServerInfo
-import io.quut.bouncer.grpc.ServerFilter
-import io.quut.bouncer.grpc.ServerFilterGroup
-import io.quut.bouncer.grpc.ServerFilterType
 import io.quut.bouncer.grpc.ServerJoinRequest
 import io.quut.bouncer.grpc.ServerJoinResponse
 import io.quut.bouncer.grpc.ServerJoinResponse.StatusCase
-import io.quut.bouncer.grpc.ServerSort
 import io.quut.bouncer.grpc.ServerSortByPlayerCount
+import io.quut.bouncer.grpc.serverFilter
+import io.quut.bouncer.grpc.serverFilterGroup
+import io.quut.bouncer.grpc.serverFilterName
+import io.quut.bouncer.grpc.serverFilterType
+import io.quut.bouncer.grpc.serverSort
+import io.quut.bouncer.grpc.serverSortByPlayerCount
 import io.quut.bouncer.velocity.VelocityBouncerPlugin
-import kotlinx.coroutines.runBlocking
+import io.quut.bouncer.velocity.extensions.eventTask
+import kotlinx.coroutines.time.delay
+import java.time.Duration
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 {
+	private val cache: Cache<UUID, ConnectionFailure> = CacheBuilder.newBuilder()
+		.expireAfterWrite(5, TimeUnit.MINUTES)
+		.build()
+
+	private val retryAttemptCounts: Int = 3
+	private val retryDuration: Duration = Duration.ofSeconds(5)
+
 	@Subscribe(order = PostOrder.LATE)
-	fun onPlayerChooseInitialServer(event: PlayerChooseInitialServerEvent)
+	fun onPostJoin(event: PostLoginEvent)
 	{
-		// Don't override
-		if (event.initialServer.isPresent)
-		{
-			return
-		}
-
-		val server: RegisteredServer = this.connectToHub(event.player) ?: return
-
-		event.setInitialServer(server)
+		this.cache.invalidate(event.player.uniqueId)
 	}
 
 	@Subscribe(order = PostOrder.LATE)
-	fun onKickedFromServer(event: KickedFromServerEvent)
+	fun onPlayerChooseInitialServer(event: PlayerChooseInitialServerEvent) = eventTask()
 	{
-		// Limbo stuff, maybe?
-		if (event.kickedDuringServerConnect())
-		{
-			return
-		}
+		val player: Player = event.player
 
-		val server: RegisteredServer = this.connectToHub(event.player) ?: return
+		for (i in 0..this.retryAttemptCounts)
+		{
+			if (!player.isActive)
+			{
+				return@eventTask
+			}
+
+			val server: RegisteredServer? = this.connectToHub(player)
+			if (server == null)
+			{
+				delay(this.retryDuration)
+				continue
+			}
+
+			event.setInitialServer(server)
+		}
+	}
+
+	@Subscribe(order = PostOrder.LATE)
+	fun onKickedFromServer(event: KickedFromServerEvent) = eventTask()
+	{
+		val player: Player = event.player
+
+		val failure: ConnectionFailure = this.cache.asMap().computeIfAbsent(player.uniqueId) { _ -> ConnectionFailure() }
+		failure.add(event.server)
+
+		var server: RegisteredServer? = this.connectToHub(player, failure)
+		while (server == null)
+		{
+			if (failure.nextAttempt() > this.retryAttemptCounts)
+			{
+				return@eventTask
+			}
+
+			delay(this.retryDuration)
+
+			if (!player.isActive)
+			{
+				return@eventTask
+			}
+
+			server = this.connectToHub(player, failure) ?: continue
+		}
 
 		event.result = KickedFromServerEvent.RedirectPlayer.create(server)
 	}
 
-	private fun connectToHub(player: Player): RegisteredServer?
+	@Subscribe(order = PostOrder.LATE)
+	fun onServerConnectedEvent(event: ServerConnectedEvent)
 	{
-		return runBlocking()
+		this.cache.invalidate(event.player.uniqueId)
+	}
+
+	@Subscribe(order = PostOrder.LATE)
+	fun onDisconnect(event: DisconnectEvent)
+	{
+		when (event.loginStatus)
 		{
-			val response: ServerJoinResponse = this@PlayerListener.plugin.stub.join(
-				ServerJoinRequest.newBuilder()
-				.addFilter(
-					ServerFilter.newBuilder()
-					.setGroup(
-						ServerFilterGroup.newBuilder()
-						.setValue("lobby")
-					)
-				)
-				.addFilter(
-					ServerFilter.newBuilder()
-					.setType(
-						ServerFilterType.newBuilder()
-						.setValue("hub")
-					)
-				).addSort(
-						ServerSort.newBuilder()
-					.setByPlayerCount(
-						ServerSortByPlayerCount.newBuilder()
-						.setValue(ServerSortByPlayerCount.Order.Ascending)
-					)
-				).addUser(player.uniqueId.toString())
-				.build()
-			)
+			DisconnectEvent.LoginStatus.SUCCESSFUL_LOGIN,
+			DisconnectEvent.LoginStatus.CONFLICTING_LOGIN,
+			DisconnectEvent.LoginStatus.PRE_SERVER_JOIN -> this.cache.invalidate(event.player.uniqueId)
 
-			return@runBlocking when (response.statusCase)
-			{
-				StatusCase.SUCCESS ->
+			else -> Unit
+		}
+	}
+
+	private suspend fun connectToHub(player: Player, failure: ConnectionFailure? = null): RegisteredServer?
+	{
+		val builder: ServerJoinRequest.Builder = ServerJoinRequest.newBuilder()
+			.addFilter(
+				serverFilter()
 				{
-					val server: BouncerServerInfo =
-						this@PlayerListener.plugin.serversById[response.success.serverId] ?: return@runBlocking null
-
-					return@runBlocking plugin.proxy.getServer(server.name).orElse(null)
+					this.group = serverFilterGroup()
+					{
+						this.value = "lobby"
+					}
 				}
+			)
+			.addFilter(
+				serverFilter()
+				{
+					this.type = serverFilterType()
+					{
+						this.value = "hub"
+					}
+				}
+			).addSort(
+				serverSort()
+				{
+					this.byPlayerCount = serverSortByPlayerCount()
+					{
+						this.value = ServerSortByPlayerCount.Order.Ascending
+					}
+				}
+			).addUser(player.uniqueId.toString())
 
-				else -> null
+		failure?.servers?.forEach()
+		{ server ->
+			builder.addFilter(
+				serverFilter()
+				{
+					this.inverse = true
+					this.name = serverFilterName()
+					{
+						this.value = server
+					}
+				}
+			)
+		}
+
+		val response: ServerJoinResponse = this.plugin.stub.join(builder.build())
+		when (response.statusCase)
+		{
+			StatusCase.SUCCESS ->
+			{
+				val server: BouncerServerInfo =
+					this@PlayerListener.plugin.serversById[response.success.serverId] ?: return null
+
+				return plugin.proxy.getServer(server.name).orElse(null)
 			}
+
+			else -> return null
+		}
+	}
+
+	private class ConnectionFailure
+	{
+		private val _servers: MutableSet<String> = mutableSetOf()
+
+		private var attemptCount: Int = 0
+
+		val servers: Set<String>
+			get() = this._servers
+
+		fun add(server: RegisteredServer)
+		{
+			this._servers.add(server.serverInfo.name)
+		}
+
+		fun nextAttempt(): Int
+		{
+			this._servers.clear()
+
+			return ++this.attemptCount
 		}
 	}
 }

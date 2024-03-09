@@ -198,7 +198,7 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 	{
 		static IServerFilter GetFilter(ServerFilter filter)
 		{
-			return filter.ConditionCase switch
+			IServerFilter instance = filter.ConditionCase switch
 			{
 				ServerFilter.ConditionOneofCase.Name => new ServerNameFilter(filter.Name.Value),
 				ServerFilter.ConditionOneofCase.Group => new ServerGroupFilter(filter.Group.Value),
@@ -206,6 +206,8 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 
 				_ => throw new NotSupportedException($"Unsupported filter: {filter.ConditionCase}")
 			};
+
+			return filter.Inverse ? new InverseFilter(instance) : instance;
 		}
 
 		if (filters.Count == 0)

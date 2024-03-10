@@ -6,4 +6,6 @@ interface IBouncerServer
 {
 	fun confirmJoin(uniqueId: UUID)
 	fun confirmLeave(uniqueId: UUID)
+
+	fun heartbeat(tps: Int? = null, memory: Int? = null)
 }

@@ -121,6 +121,14 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 
 				break;
 			}
+
+			case ServerStatusUpdate.UpdateOneofCase.Heartbeat:
+			{
+				server.Data.Tps = update.Heartbeat.Tps;
+				server.Data.Memory = update.Heartbeat.Memory;
+
+				break;
+			}
 		}
 	}
 

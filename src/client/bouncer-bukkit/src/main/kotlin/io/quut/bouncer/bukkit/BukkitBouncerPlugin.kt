@@ -36,7 +36,6 @@ class BukkitBouncerPlugin : JavaPlugin()
 			this.config.name,
 			this.config.group,
 			this.config.type,
-
 			InetSocketAddress.createUnresolved(
 				System.getenv("SERVER_IP") ?: this.server.ip.ifEmpty()
 				{
@@ -49,7 +48,8 @@ class BukkitBouncerPlugin : JavaPlugin()
 					}
 				},
 				this.server.port
-			)
+			),
+			maxMemory = (Runtime.getRuntime().maxMemory() / 1024L / 1024L).toInt()
 		)
 
 		this.bouncerServer = this.bouncer.serverManager.registerServer(info)
@@ -60,6 +60,18 @@ class BukkitBouncerPlugin : JavaPlugin()
 		}
 
 		this.server.pluginManager.registerEvents(PlayerListener(this.bouncerServer), this)
+
+		this.server.scheduler.runTaskTimerAsynchronously(
+			this,
+			{
+				this.bouncerServer.heartbeat(
+					tps = (this.server.tps[0] * 100).toInt(),
+					memory = ((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024L / 1024L).toInt()
+				)
+			},
+			20L,
+			20L
+		)
 	}
 
 	private fun loadPluginConfig()

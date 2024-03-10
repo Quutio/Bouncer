@@ -16,6 +16,7 @@ import org.spongepowered.api.event.lifecycle.ConstructPluginEvent
 import org.spongepowered.api.event.lifecycle.StartedEngineEvent
 import org.spongepowered.api.event.lifecycle.StoppedGameEvent
 import org.spongepowered.api.event.lifecycle.StoppingEngineEvent
+import org.spongepowered.api.scheduler.Task
 import org.spongepowered.configurate.CommentedConfigurationNode
 import org.spongepowered.configurate.loader.ConfigurationLoader
 import org.spongepowered.plugin.PluginContainer
@@ -24,6 +25,7 @@ import java.lang.invoke.MethodHandles
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.time.Duration
 
 @Plugin("bouncer")
 class SpongeBouncerPlugin @Inject constructor(
@@ -67,7 +69,8 @@ class SpongeBouncerPlugin @Inject constructor(
 					}
 				},
 				address.port
-			)
+			),
+			maxMemory = (Runtime.getRuntime().maxMemory() / 1024L / 1024L).toInt()
 		)
 
 		this.bouncerServer = this.bouncer.serverManager.registerServer(info)
@@ -77,6 +80,21 @@ class SpongeBouncerPlugin @Inject constructor(
 		this.eventManager
 			.registerListeners(this.pluginContainer, PlayerListener(this.bouncerServer), lookup)
 			.registerListeners(this.pluginContainer, CommandListener(), lookup)
+
+		this.game.asyncScheduler().submit(
+			Task.builder()
+				.plugin(this.pluginContainer)
+				.delay(Duration.ofSeconds(1))
+				.interval(Duration.ofSeconds(1))
+				.execute()
+				{ _ ->
+					this.bouncerServer.heartbeat(
+						tps = (this.game.server().ticksPerSecond() * 100).toInt(),
+						memory = ((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024L / 1024L).toInt()
+					)
+				}
+				.build()
+		)
 	}
 
 	@Listener

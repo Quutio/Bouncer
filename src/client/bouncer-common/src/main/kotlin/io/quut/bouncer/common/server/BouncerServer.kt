@@ -2,6 +2,7 @@ package io.quut.bouncer.common.server
 
 import io.quut.bouncer.api.server.BouncerServerInfo
 import io.quut.bouncer.api.server.IBouncerServer
+import io.quut.bouncer.grpc.serverHeartbeat
 import io.quut.bouncer.grpc.serverStatusUpdate
 import io.quut.bouncer.grpc.serverStatusUserJoin
 import io.quut.bouncer.grpc.serverStatusUserQuit
@@ -89,6 +90,32 @@ internal class BouncerServer(internal val info: BouncerServerInfo) :
 
 	override fun confirmJoin(uniqueId: UUID) = this.updateTransaction(uniqueId, true)
 	override fun confirmLeave(uniqueId: UUID) = this.updateTransaction(uniqueId, false)
+	override fun heartbeat(tps: Int?, memory: Int?)
+	{
+		if (this.state.get() != RegistrationState.REGISTERED)
+		{
+			return
+		}
+
+		this.session.sendUpdate(
+			serverStatusUpdate()
+			{
+				this.serverId = this@BouncerServer.id
+				this.heartbeat = serverHeartbeat()
+				{
+					if (tps != null)
+					{
+						this.tps = tps
+					}
+
+					if (memory != null)
+					{
+						this.memory = memory
+					}
+				}
+			}
+		)
+	}
 
 	private fun sendConfirmJoin(uniqueId: UUID)
 	{

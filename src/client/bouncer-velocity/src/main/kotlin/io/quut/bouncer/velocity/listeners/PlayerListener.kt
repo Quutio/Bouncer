@@ -53,7 +53,7 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 		{
 			if (!player.isActive)
 			{
-				return@eventTask
+				break
 			}
 
 			val server: RegisteredServer? = this.connectToHub(player)
@@ -64,6 +64,8 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 			}
 
 			event.setInitialServer(server)
+
+			break
 		}
 	}
 

@@ -79,6 +79,11 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 						this.type = server.info.type
 						this.host = server.info.address.hostString
 						this.port = server.info.address.port
+
+						if (server.info.maxMemory != null)
+						{
+							this.maxMemory = server.info.maxMemory!!
+						}
 					}
 				}
 			)

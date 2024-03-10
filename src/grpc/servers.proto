@@ -23,6 +23,10 @@ message ServerData {
 
 	string host = 4;
 	int32 port = 5;
+
+	optional int32 tps = 6;
+	optional int32 memory = 7;
+	optional int32 maxMemory = 8;
 }
 
 message ServerStatusUpdate {
@@ -34,6 +38,8 @@ message ServerStatusUpdate {
 
 		ServerStatusUserJoin userJoin = 4;
 		ServerStatusUserQuit userQuit = 5;
+
+		ServerHeartbeat heartbeat = 6;
 	}
 }
 
@@ -163,4 +169,10 @@ message ServerJoinSuccess {
 }
 
 message ServerJoinNoServers {
+}
+
+message ServerHeartbeat {
+	int32 serverId = 1;
+	optional int32 tps = 2;
+	optional int32 memory = 3;
 }

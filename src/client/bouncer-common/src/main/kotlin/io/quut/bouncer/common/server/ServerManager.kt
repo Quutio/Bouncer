@@ -101,14 +101,14 @@ internal class ServerManager(private val stub: ServerServiceGrpcKt.ServerService
 		}
 	}
 
-	internal fun shutdown()
+	internal fun shutdown(intentional: Boolean = false)
 	{
 		synchronized(this.startSessionSignal)
 		{
 			this.startSessionSignal.getAndSet(Job())
 			this.servers.clear()
 
-			this.session.shutdown()
+			this.session.shutdown(intentional)
 		}
 	}
 }

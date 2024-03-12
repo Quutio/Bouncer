@@ -3,6 +3,7 @@ package io.quut.bouncer.bukkit
 import io.quut.bouncer.api.server.BouncerServerInfo
 import io.quut.bouncer.api.server.IBouncerServer
 import io.quut.bouncer.bukkit.config.PluginConfig
+import io.quut.bouncer.bukkit.listeners.CommandListener
 import io.quut.bouncer.bukkit.listeners.PlayerListener
 import io.quut.bouncer.common.BouncerAPI
 import ninja.leaping.configurate.ConfigurationNode
@@ -60,6 +61,7 @@ class BukkitBouncerPlugin : JavaPlugin()
 		}
 
 		this.server.pluginManager.registerEvents(PlayerListener(this.bouncerServer), this)
+		this.server.pluginManager.registerEvents(CommandListener(this.bouncer), this)
 
 		this.server.scheduler.runTaskTimerAsynchronously(
 			this,
@@ -88,6 +90,6 @@ class BukkitBouncerPlugin : JavaPlugin()
 
 	override fun onDisable()
 	{
-		this.bouncer.shutdownGracefully()
+		this.bouncer.shutdownNow()
 	}
 }

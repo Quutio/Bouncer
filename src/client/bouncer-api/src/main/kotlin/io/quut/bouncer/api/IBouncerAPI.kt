@@ -12,6 +12,7 @@ interface IBouncerAPI
 	fun serverByName(name: String): BouncerServerInfo?
 
 	fun shutdownGracefully()
+	fun shutdownNow()
 
 	companion object
 	{

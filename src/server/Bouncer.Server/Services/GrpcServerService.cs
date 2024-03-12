@@ -41,7 +41,7 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 					{
 						foreach (RegisteredServer server in servers.Values)
 						{
-							this.serverManager.Unregister(server, unregistration: true);
+							this.serverManager.Unregister(server, unregistration: request.Close.Intentional);
 						}
 
 						servers.Clear();

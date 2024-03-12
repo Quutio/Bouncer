@@ -41,9 +41,16 @@ open class BouncerAPI(endpoint: String) : IBouncerAPI
 
 	override fun shutdownGracefully()
 	{
-		this._serverManager.shutdown()
+		this._serverManager.shutdown(intentional = true)
 
 		this.channel.shutdown().awaitTermination(5, TimeUnit.SECONDS)
+		this.channel.shutdownNow()
+	}
+
+	override fun shutdownNow()
+	{
+		this._serverManager.shutdown()
+
 		this.channel.shutdownNow()
 	}
 }

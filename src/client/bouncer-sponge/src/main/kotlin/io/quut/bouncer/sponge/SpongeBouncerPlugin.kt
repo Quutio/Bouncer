@@ -79,7 +79,7 @@ class SpongeBouncerPlugin @Inject constructor(
 
 		this.eventManager
 			.registerListeners(this.pluginContainer, PlayerListener(this.bouncerServer), lookup)
-			.registerListeners(this.pluginContainer, CommandListener(), lookup)
+			.registerListeners(this.pluginContainer, CommandListener(this.bouncer), lookup)
 
 		this.game.asyncScheduler().submit(
 			Task.builder()
@@ -102,12 +102,12 @@ class SpongeBouncerPlugin @Inject constructor(
 	{
 		this.eventManager.unregisterListeners(this.pluginContainer)
 
-		this.bouncer.serverManager.unregisterServer(this.bouncerServer)
+		// this.bouncer.serverManager.unregisterServer(this.bouncerServer)
 	}
 
 	@Listener
 	fun onStopped(event: StoppedGameEvent)
 	{
-		this.bouncer.shutdownGracefully()
+		this.bouncer.shutdownNow()
 	}
 }

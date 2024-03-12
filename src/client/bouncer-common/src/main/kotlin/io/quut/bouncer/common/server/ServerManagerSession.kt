@@ -183,13 +183,17 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 		this.sendUnregisterServer(server.id)
 	}
 
-	internal fun shutdown()
+	internal fun shutdown(intentional: Boolean = false)
 	{
-		this.servers.values.forEach { server -> this.unregisterServer(server) }
+		this.servers.values.forEach { server -> server.lostConnection() }
 
 		this.requestChannel.trySend(
 			ServerSessionRequest.newBuilder()
-				.setClose(ServerSessionClose.newBuilder().build())
+				.setClose(
+					ServerSessionClose.newBuilder()
+						.setIntentional(intentional)
+						.build()
+				)
 				.build()
 		)
 

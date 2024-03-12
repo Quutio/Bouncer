@@ -33,6 +33,7 @@ message ServerSessionRequest {
 }
 
 message ServerSessionClose {
+	optional bool intentional = 1;
 }
 
 message ServerSessionPing {

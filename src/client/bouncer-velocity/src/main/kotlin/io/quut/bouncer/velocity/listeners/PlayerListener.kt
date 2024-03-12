@@ -2,6 +2,7 @@ package io.quut.bouncer.velocity.listeners
 
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
+import com.google.protobuf.ByteString
 import com.velocitypowered.api.event.PostOrder
 import com.velocitypowered.api.event.Subscribe
 import com.velocitypowered.api.event.connection.DisconnectEvent
@@ -24,6 +25,7 @@ import io.quut.bouncer.grpc.serverSort
 import io.quut.bouncer.grpc.serverSortByPlayerCount
 import io.quut.bouncer.velocity.VelocityBouncerPlugin
 import io.quut.bouncer.velocity.extensions.eventTask
+import io.quut.bouncer.velocity.extensions.toByteArray
 import kotlinx.coroutines.time.delay
 import java.time.Duration
 import java.util.UUID
@@ -145,7 +147,7 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 						this.value = ServerSortByPlayerCount.Order.Ascending
 					}
 				}
-			).addUser(player.uniqueId.toString())
+			).addUser(ByteString.copyFrom(player.uniqueId.toByteArray()))
 
 		failure?.servers?.forEach()
 		{ server ->

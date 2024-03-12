@@ -50,7 +50,10 @@ internal sealed class ServerStatusListener
 		{
 			ServerId = (int)server.Id,
 
-			Remove = new ServerStatusRemove()
+			Remove = new ServerStatusRemove
+			{
+				Reason = server.Unregistration ? ServerRemoveReason.Unregistration : ServerRemoveReason.Unspecified
+			}
 		});
 	}
 

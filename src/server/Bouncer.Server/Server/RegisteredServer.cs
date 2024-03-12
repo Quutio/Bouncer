@@ -22,6 +22,8 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 
 	private readonly ConcurrentDictionary<Guid, long?> players;
 
+	internal bool Unregistration { get; private set; }
+
 	internal RegisteredServer(ServerManager serverManager, ILogger<RegisteredServer> logger, uint id, ServerData data)
 	{
 		this.serverManager = serverManager;
@@ -94,8 +96,13 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 
 	internal void Unregister() => this.serverManager.Unregister(this);
 
-	internal void UnregisterInternal()
+	internal void UnregisterInternal(bool unregistration = false)
 	{
+		if (unregistration)
+		{
+			this.Unregistration = unregistration;
+		}
+
 		this.cancellationTokenSource.Cancel();
 	}
 

@@ -1,9 +1,11 @@
 package io.quut.bouncer.common.server
 
+import com.google.protobuf.ByteString
 import io.quut.bouncer.api.server.BouncerServerInfo
 import io.quut.bouncer.api.server.IBouncerServer
+import io.quut.bouncer.common.extensions.toByteArray
 import io.quut.bouncer.grpc.serverHeartbeat
-import io.quut.bouncer.grpc.serverStatusUpdate
+import io.quut.bouncer.grpc.serverStatusUpdateRequest
 import io.quut.bouncer.grpc.serverStatusUserJoin
 import io.quut.bouncer.grpc.serverStatusUserQuit
 import java.util.UUID
@@ -98,7 +100,7 @@ internal class BouncerServer(internal val info: BouncerServerInfo) :
 		}
 
 		this.session.sendUpdate(
-			serverStatusUpdate()
+			serverStatusUpdateRequest()
 			{
 				this.serverId = this@BouncerServer.id
 				this.heartbeat = serverHeartbeat()
@@ -120,12 +122,12 @@ internal class BouncerServer(internal val info: BouncerServerInfo) :
 	private fun sendConfirmJoin(uniqueId: UUID)
 	{
 		this.session.sendUpdate(
-			serverStatusUpdate()
+			serverStatusUpdateRequest()
 			{
 				this.serverId = this@BouncerServer.id
 				this.userJoin = serverStatusUserJoin()
 				{
-					this.user = uniqueId.toString()
+					this.user = ByteString.copyFrom(uniqueId.toByteArray())
 				}
 			}
 		)
@@ -134,12 +136,12 @@ internal class BouncerServer(internal val info: BouncerServerInfo) :
 	private fun sendConfirmLeave(uniqueId: UUID)
 	{
 		this.session.sendUpdate(
-			serverStatusUpdate()
+			serverStatusUpdateRequest()
 			{
 				this.serverId = this@BouncerServer.id
 				this.userQuit = serverStatusUserQuit()
 				{
-					this.user = uniqueId.toString()
+					this.user = ByteString.copyFrom(uniqueId.toByteArray())
 				}
 			}
 		)

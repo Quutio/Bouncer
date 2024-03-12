@@ -1,20 +1,30 @@
 package io.quut.bouncer.common.server
 
 import io.quut.bouncer.grpc.ServerServiceGrpcKt
+import io.quut.bouncer.grpc.ServerSessionClose
+import io.quut.bouncer.grpc.ServerSessionPing
 import io.quut.bouncer.grpc.ServerSessionRequest
 import io.quut.bouncer.grpc.ServerSessionResponse
-import io.quut.bouncer.grpc.ServerStatusUpdate
+import io.quut.bouncer.grpc.ServerSessionResponse.ResponseCase
+import io.quut.bouncer.grpc.ServerSessionSettings
+import io.quut.bouncer.grpc.ServerStatusUpdateRequest
 import io.quut.bouncer.grpc.serverData
 import io.quut.bouncer.grpc.serverRegistrationRequest
 import io.quut.bouncer.grpc.serverUnregistrationRequest
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.channels.ChannelResult
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.time.delay
+import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -27,21 +37,48 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 
 	private val servers: ConcurrentMap<Int, BouncerServer> = ConcurrentHashMap()
 
+	private var pingTask: Job? = null
+
 	internal suspend fun start()
 	{
-		coroutineScope()
-		{
-			this@ServerManagerSession.stub.session(this@ServerManagerSession.requestChannel.receiveAsFlow())
-				.cancellable()
-				.collect()
-				{ response ->
-					this@ServerManagerSession.requestResponses.remove(response.requestId)?.complete(response)
-
-					if (this@ServerManagerSession.servers.isEmpty())
-					{
-						this.cancel()
-					}
+		this@ServerManagerSession.stub.session(this@ServerManagerSession.requestChannel.receiveAsFlow())
+			.cancellable()
+			.collect()
+			{ response ->
+				if (response.responseCase == ResponseCase.SETTINGS)
+				{
+					return@collect this@ServerManagerSession.setSettings(response.settings)
 				}
+
+				this@ServerManagerSession.requestResponses.remove(response.requestId)?.complete(response)
+			}
+
+		this.pingTask?.cancel()
+		this.pingTask = null
+	}
+
+	private suspend fun setSettings(settings: ServerSessionSettings)
+	{
+		this.pingTask?.cancel()
+
+		@OptIn(DelicateCoroutinesApi::class) // Background task
+		this.pingTask = GlobalScope.launch()
+		{
+			while (this.isActive)
+			{
+				val result: ChannelResult<Unit> = this@ServerManagerSession.requestChannel.trySend(
+					ServerSessionRequest.newBuilder().setPing(
+						ServerSessionPing.newBuilder()
+					).build()
+				)
+
+				if (!result.isSuccess)
+				{
+					break
+				}
+
+				delay(Duration.ofSeconds(settings.pingInterval.seconds))
+			}
 		}
 	}
 
@@ -56,13 +93,9 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 		return deferred
 	}
 
-	private fun sendRequestAndForget(builder: ServerSessionRequest.Builder)
+	private fun sendRequestAndForget(request: ServerSessionRequest)
 	{
-		this.requestChannel.trySend(
-			builder
-				.setRequestId(this.nextRequestId.getAndIncrement())
-				.build()
-		)
+		this.requestChannel.trySend(request)
 	}
 
 	@OptIn(ExperimentalCoroutinesApi::class)
@@ -120,16 +153,17 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 				{
 					this.serverId = id
 				}
-			)
+			).build()
 		)
 	}
 
-	internal fun sendUpdate(update: ServerStatusUpdate)
+	internal fun sendUpdate(update: ServerStatusUpdateRequest)
 	{
 		this.sendRequestAndForget(
 			ServerSessionRequest
 				.newBuilder()
 				.setUpdate(update)
+				.build()
 		)
 	}
 
@@ -152,6 +186,12 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 	internal fun shutdown()
 	{
 		this.servers.values.forEach { server -> this.unregisterServer(server) }
+
+		this.requestChannel.trySend(
+			ServerSessionRequest.newBuilder()
+				.setClose(ServerSessionClose.newBuilder().build())
+				.build()
+		)
 
 		this.requestChannel.close()
 	}

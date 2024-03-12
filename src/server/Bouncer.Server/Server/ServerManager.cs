@@ -59,7 +59,7 @@ internal sealed class ServerManager
 		return server;
 	}
 
-	internal void Unregister(RegisteredServer server)
+	internal void Unregister(RegisteredServer server, bool unregistration = false)
 	{
 		if (!this.serversById.TryRemove(server.Id, out _))
 		{
@@ -72,7 +72,7 @@ internal sealed class ServerManager
 		//This may fail if server registered with same name and we are unregistering the old one, we can ignore this
 		this.serversByName.TryRemove(new KeyValuePair<string, RegisteredServer>(server.Name, server));
 
-		server.UnregisterInternal();
+		server.UnregisterInternal(unregistration);
 	}
 
 	internal ServerStatusListener CreateServerListener(IServerFilter? filter)

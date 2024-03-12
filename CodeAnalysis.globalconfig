@@ -115,4 +115,5 @@ dotnet_diagnostic.IDE0130.severity = warning
 dotnet_diagnostic.IDE0230.severity = suggestion
 
 # CA2007: Do not directly await a Task
-dotnet_diagnostic.CA2007.severity = warning
+# False positives, https://github.com/dotnet/roslyn-analyzers/issues/5712
+dotnet_diagnostic.CA2007.severity = silent

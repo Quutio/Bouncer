@@ -45,6 +45,7 @@ internal class ServerManager(private val stub: ServerServiceGrpcKt.ServerService
 
 					synchronized(this@ServerManager.startSessionSignal)
 					{
+						this@ServerManager.session.shutdown()
 						this@ServerManager.session = ServerManagerSession(this@ServerManager.stub)
 
 						this@ServerManager.servers.forEach()

@@ -6,7 +6,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 
-fun eventTask(fn: suspend () -> Unit): EventTask
+internal fun eventTask(fn: suspend () -> Unit): EventTask
 {
 	return EventTask.withContinuation()
 	{ continuation ->

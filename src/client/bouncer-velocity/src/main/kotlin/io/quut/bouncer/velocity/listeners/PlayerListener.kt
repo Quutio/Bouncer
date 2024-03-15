@@ -76,6 +76,11 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 	{
 		val player: Player = event.player
 
+		if (event.kickedDuringServerConnect())
+		{
+			return@eventTask
+		}
+
 		val failure: ConnectionFailure = this.cache.asMap().computeIfAbsent(player.uniqueId) { _ -> ConnectionFailure() }
 		failure.add(event.server)
 

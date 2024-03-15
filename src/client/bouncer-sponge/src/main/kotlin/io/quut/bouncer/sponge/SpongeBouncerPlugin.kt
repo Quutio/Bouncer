@@ -45,7 +45,10 @@ class SpongeBouncerPlugin @Inject constructor(
 	@Listener
 	fun onConstruct(event: ConstructPluginEvent)
 	{
-		this.config = this.configLoader.load().require(PluginConfig::class.java)
+		val node: CommentedConfigurationNode = this.configLoader.load()
+
+		this.config = node.require(PluginConfig::class.java)
+		this.configLoader.save(node)
 
 		this.bouncer = BouncerAPI(System.getenv("BOUNCER_ADDRESS") ?: this.config.apiUrl)
 	}

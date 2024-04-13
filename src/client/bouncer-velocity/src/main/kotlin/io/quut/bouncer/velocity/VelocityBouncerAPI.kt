@@ -5,7 +5,7 @@ import io.quut.bouncer.common.BouncerAPI
 
 internal class VelocityBouncerAPI(private val plugin: VelocityBouncerPlugin, endpoint: String) : BouncerAPI(endpoint)
 {
-	override fun shutdownSignalHook()
+	override fun onShutdownSignal()
 	{
 		this.plugin.proxy.shutdown()
 	}

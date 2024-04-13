@@ -5,7 +5,7 @@ import org.spongepowered.api.Game
 
 internal class SpongeBouncerAPI(private val game: Game, endpoint: String) : BouncerAPI(endpoint)
 {
-	override fun shutdownSignalHook()
+	override fun onShutdownSignal()
 	{
 		if (this.game.isServerAvailable)
 		{

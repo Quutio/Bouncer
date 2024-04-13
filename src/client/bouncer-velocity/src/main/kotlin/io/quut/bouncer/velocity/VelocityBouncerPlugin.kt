@@ -36,6 +36,8 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 	@Subscribe
 	fun onProxyInitialize(event: ProxyInitializeEvent)
 	{
+		this.bouncer.installShutdownSignal()
+
 		this.proxy.eventManager.register(this, PlayerListener(this))
 
 		bouncer = VelocityBouncerAPI(this, bouncerAddress)

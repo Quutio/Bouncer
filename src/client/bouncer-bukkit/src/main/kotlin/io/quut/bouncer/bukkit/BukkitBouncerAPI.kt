@@ -5,7 +5,7 @@ import org.bukkit.Server
 
 internal class BukkitBouncerAPI(private val server: Server, endpoint: String) : BouncerAPI(endpoint)
 {
-	override fun shutdownSignalHook()
+	override fun onShutdownSignal()
 	{
 		this.server.shutdown()
 	}

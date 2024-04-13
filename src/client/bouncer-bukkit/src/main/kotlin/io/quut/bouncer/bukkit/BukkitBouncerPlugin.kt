@@ -33,6 +33,8 @@ class BukkitBouncerPlugin : JavaPlugin()
 
 	override fun onEnable()
 	{
+		this.bouncer.installShutdownSignal()
+
 		val info = BouncerServerInfo(
 			this.config.name,
 			this.config.group,

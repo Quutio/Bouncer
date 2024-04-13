@@ -38,7 +38,10 @@ abstract class BouncerAPI(endpoint: String) : IBouncerAPI
 	init
 	{
 		IBouncerAPI.setApi(this)
+	}
 
+	fun installShutdownSignal()
+	{
 		Signal.handle(Signal("INT"))
 		{ _ ->
 			this._serverManager.shutdown(intentional = true)
@@ -46,11 +49,11 @@ abstract class BouncerAPI(endpoint: String) : IBouncerAPI
 			this.channel.shutdown().awaitTermination(5, TimeUnit.SECONDS)
 			this.channel.shutdownNow()
 
-			this.shutdownSignalHook()
+			this.onShutdownSignal()
 		}
 	}
 
-	protected abstract fun shutdownSignalHook()
+	protected abstract fun onShutdownSignal()
 
 	override fun shutdownGracefully()
 	{

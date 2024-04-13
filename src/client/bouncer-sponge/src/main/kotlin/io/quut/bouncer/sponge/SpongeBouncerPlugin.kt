@@ -56,6 +56,8 @@ class SpongeBouncerPlugin @Inject constructor(
 	@Listener
 	fun onStarted(event: StartedEngineEvent<Server>)
 	{
+		this.bouncer.installShutdownSignal()
+
 		val address: InetSocketAddress = this.game.server().boundAddress().get()
 
 		val info = BouncerServerInfo(

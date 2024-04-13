@@ -10,7 +10,18 @@ internal class CommandListener(private val bouncer: IBouncerAPI)
 	@Listener(order = Order.POST)
 	private fun onExecuteCommandEvent(event: ExecuteCommandEvent.Pre)
 	{
-		if (event.result().isPresent || event.command() != "stop")
+		if (event.result().isPresent || event.command() != "stop" || !event.commandCause().hasPermission("minecraft.command.stop"))
+		{
+			return
+		}
+
+		this.bouncer.shutdownGracefully()
+	}
+
+	@Listener(order = Order.POST)
+	private fun onExecuteCommandEvent(event: ExecuteCommandEvent.Post)
+	{
+		if (!event.result().isSuccess || event.command() != "stop")
 		{
 			return
 		}

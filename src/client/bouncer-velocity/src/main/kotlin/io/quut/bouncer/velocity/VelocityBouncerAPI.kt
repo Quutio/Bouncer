@@ -3,8 +3,13 @@ package io.quut.bouncer.velocity
 import io.quut.bouncer.api.server.BouncerServerInfo
 import io.quut.bouncer.common.BouncerAPI
 
-class VelocityBouncerAPI(val plugin: VelocityBouncerPlugin, endpoint: String) : BouncerAPI(endpoint)
+internal class VelocityBouncerAPI(private val plugin: VelocityBouncerPlugin, endpoint: String) : BouncerAPI(endpoint)
 {
+	override fun shutdownSignalHook()
+	{
+		this.plugin.proxy.shutdown()
+	}
+
 	override fun allServers(): Map<String, BouncerServerInfo>
 	{
 		return plugin.serversByName.toMap()

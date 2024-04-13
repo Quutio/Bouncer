@@ -50,7 +50,7 @@ class SpongeBouncerPlugin @Inject constructor(
 		this.config = node.require(PluginConfig::class.java)
 		this.configLoader.save(node)
 
-		this.bouncer = BouncerAPI(System.getenv("BOUNCER_ADDRESS") ?: this.config.apiUrl)
+		this.bouncer = SpongeBouncerAPI(event.game(), System.getenv("BOUNCER_ADDRESS") ?: this.config.apiUrl)
 	}
 
 	@Listener

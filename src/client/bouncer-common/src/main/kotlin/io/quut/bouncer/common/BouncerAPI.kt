@@ -7,9 +7,10 @@ import io.quut.bouncer.api.server.BouncerServerInfo
 import io.quut.bouncer.api.server.IServerManager
 import io.quut.bouncer.common.server.ServerManager
 import io.quut.bouncer.grpc.ServerServiceGrpcKt
+import sun.misc.Signal
 import java.util.concurrent.TimeUnit
 
-open class BouncerAPI(endpoint: String) : IBouncerAPI
+abstract class BouncerAPI(endpoint: String) : IBouncerAPI
 {
 	private val channel: ManagedChannel = ManagedChannelBuilder.forTarget(endpoint).usePlaintext().build()
 	private val stub: ServerServiceGrpcKt.ServerServiceCoroutineStub = ServerServiceGrpcKt.ServerServiceCoroutineStub(this.channel)
@@ -37,7 +38,19 @@ open class BouncerAPI(endpoint: String) : IBouncerAPI
 	init
 	{
 		IBouncerAPI.setApi(this)
+
+		Signal.handle(Signal("INT"))
+		{ _ ->
+			this._serverManager.shutdown(intentional = true)
+
+			this.channel.shutdown().awaitTermination(5, TimeUnit.SECONDS)
+			this.channel.shutdownNow()
+
+			this.shutdownSignalHook()
+		}
 	}
+
+	protected abstract fun shutdownSignalHook()
 
 	override fun shutdownGracefully()
 	{

@@ -28,7 +28,7 @@ class BukkitBouncerPlugin : JavaPlugin()
 		this.saveDefaultConfig()
 		this.loadPluginConfig()
 
-		this.bouncer = BouncerAPI(config.apiUrl)
+		this.bouncer = BukkitBouncerAPI(this.server, config.apiUrl)
 	}
 
 	override fun onEnable()

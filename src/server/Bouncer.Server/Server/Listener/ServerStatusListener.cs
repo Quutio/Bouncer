@@ -11,7 +11,7 @@ internal sealed class ServerStatusListener
 
 	private readonly IServerFilter? filter;
 
-	private readonly BufferBlock<ServerStatusUpdate> updates;
+	private readonly BufferBlock<BouncerListenResponse> updates;
 
 	internal ServerStatusListener(ServerManager serverManager, IServerFilter? filter)
 	{
@@ -19,7 +19,7 @@ internal sealed class ServerStatusListener
 
 		this.filter = filter;
 
-		this.updates = new BufferBlock<ServerStatusUpdate>();
+		this.updates = new BufferBlock<BouncerListenResponse>();
 	}
 
 	internal void TryAddServer(RegisteredServer server)
@@ -30,13 +30,15 @@ internal sealed class ServerStatusListener
 		}
 
 		//Send the status update first
-		this.AddUpdate(new ServerStatusUpdate
+		this.AddUpdate(new BouncerListenResponse
 		{
-			ServerId = (int)server.Id,
-
-			Add = new ServerStatusAdd
+			Server = new BouncerListenResponse.Types.Server
 			{
-				Data = server.Data
+				ServerId = (int)server.Id,
+				Add = new BouncerListenResponse.Types.Server.Types.Add
+				{
+					Data = server.Data
+				}
 			}
 		});
 
@@ -46,30 +48,32 @@ internal sealed class ServerStatusListener
 
 	internal void RemoveServer(RegisteredServer server)
 	{
-		this.AddUpdate(new ServerStatusUpdate
+		this.AddUpdate(new BouncerListenResponse
 		{
-			ServerId = (int)server.Id,
-
-			Remove = new ServerStatusRemove
+			Server = new BouncerListenResponse.Types.Server
 			{
-				Reason = server.Unregistration ? ServerRemoveReason.Unregistration : ServerRemoveReason.Unspecified
+				ServerId = (int)server.Id,
+				Remove = new BouncerListenResponse.Types.Server.Types.Remove
+				{
+					Reason = server.Unregistration ? ServerRemovelReason.Unregistration : ServerRemovelReason.Unspecified
+				}
 			}
 		});
 	}
 
-	internal void AddUpdate(ServerStatusUpdate update)
+	internal void AddUpdate(BouncerListenResponse update)
 	{
 		this.updates.SendAsync(update);
 	}
 
-	internal async Task Listen(IServerStreamWriter<ServerStatusUpdate> responseStream, CancellationToken cancellationToken)
+	internal async Task Listen(IServerStreamWriter<BouncerListenResponse> responseStream, CancellationToken cancellationToken)
 	{
 		try
 		{
 			while (true)
 			{
 				//Try to first receive sync to avoid the async overhead
-				if (!this.updates.TryReceive(out ServerStatusUpdate? update))
+				if (!this.updates.TryReceive(out BouncerListenResponse? update))
 				{
 					update = await this.updates.ReceiveAsync(cancellationToken).ConfigureAwait(false);
 				}

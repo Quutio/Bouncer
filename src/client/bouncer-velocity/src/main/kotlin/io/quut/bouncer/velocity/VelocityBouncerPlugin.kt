@@ -10,11 +10,13 @@ import com.velocitypowered.api.proxy.server.ServerInfo
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import io.quut.bouncer.api.server.BouncerServerInfo
+import io.quut.bouncer.grpc.BouncerGrpcKt
+import io.quut.bouncer.grpc.BouncerListenRequestKt.server
+import io.quut.bouncer.grpc.BouncerListenResponse
 import io.quut.bouncer.grpc.ServerData
-import io.quut.bouncer.grpc.ServerListenRequest
-import io.quut.bouncer.grpc.ServerServiceGrpcKt
-import io.quut.bouncer.grpc.ServerStatusUpdate
+import io.quut.bouncer.grpc.bouncerListenRequest
 import io.quut.bouncer.velocity.listeners.PlayerListener
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -31,63 +33,76 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 	private val bouncerAddress: String = System.getenv("BOUNCER_ADDRESS") ?: "localhost:5000"
 
 	internal val channel: ManagedChannel = ManagedChannelBuilder.forTarget(bouncerAddress).usePlaintext().build()
-	internal val stub: ServerServiceGrpcKt.ServerServiceCoroutineStub = ServerServiceGrpcKt.ServerServiceCoroutineStub(channel)
+	internal val stub: BouncerGrpcKt.BouncerCoroutineStub = BouncerGrpcKt.BouncerCoroutineStub(channel)
 
 	@Subscribe
 	fun onProxyInitialize(event: ProxyInitializeEvent)
 	{
+		this.bouncer = VelocityBouncerAPI(this, this.bouncerAddress)
 		this.bouncer.installShutdownSignal()
 
 		this.proxy.eventManager.register(this, PlayerListener(this))
 
-		bouncer = VelocityBouncerAPI(this, bouncerAddress)
-
-		suspend fun startListening()
-		{
-			stub.listen(ServerListenRequest.newBuilder().build()).collect()
-			{ update ->
-				when (update.updateCase)
-				{
-					ServerStatusUpdate.UpdateCase.ADD ->
-					{
-						val serverData: ServerData = update.add.data
-						val address: InetSocketAddress = InetSocketAddress.createUnresolved(serverData.host, serverData.port)
-						this@VelocityBouncerPlugin.proxy.registerServer(ServerInfo(serverData.name, address))
-
-						println("Add server ${update.serverId} (${serverData.host}:${serverData.port})")
-
-						val info = BouncerServerInfo(serverData.name, serverData.group, serverData.type, address)
-
-						this@VelocityBouncerPlugin.serversById[update.serverId] = info
-						this@VelocityBouncerPlugin.serversByName[serverData.name] = info
-					}
-					ServerStatusUpdate.UpdateCase.REMOVE ->
-					{
-						println("Remove server ${update.serverId}")
-						val server: BouncerServerInfo = this@VelocityBouncerPlugin.serversById.remove(update.serverId) ?: return@collect
-
-						this@VelocityBouncerPlugin.serversByName.remove(server.name)
-						this@VelocityBouncerPlugin.proxy.unregisterServer(ServerInfo(server.name, server.address))
-					}
-					else -> Unit
-				}
-			}
-		}
-
+		@OptIn(DelicateCoroutinesApi::class)
 		GlobalScope.launch()
 		{
+			suspend fun startListening()
+			{
+				this@VelocityBouncerPlugin.stub.listen(
+					bouncerListenRequest()
+					{
+						this.server = server {}
+					}
+				).collect(this@VelocityBouncerPlugin::handleResponse)
+			}
+
 			while (true)
 			{
-				try
-				{
-					startListening()
-				}
-				catch (e: Throwable)
-				{
-				}
+				runCatching { startListening() }
 
 				delay(3333)
 			}
+		}
+	}
+
+	private fun handleResponse(response: BouncerListenResponse)
+	{
+		when (response.dataCase)
+		{
+			BouncerListenResponse.DataCase.SERVER -> this.handleServerResponse(response.server)
+
+			else -> Unit
+		}
+	}
+
+	private fun handleServerResponse(response: BouncerListenResponse.Server)
+	{
+		when (response.updateCase)
+		{
+			BouncerListenResponse.Server.UpdateCase.ADD ->
+			{
+				val serverData: ServerData = response.add.data
+				val address: InetSocketAddress = InetSocketAddress.createUnresolved(serverData.host, serverData.port)
+				this@VelocityBouncerPlugin.proxy.registerServer(ServerInfo(serverData.name, address))
+
+				println("Add server ${response.serverId} (${serverData.host}:${serverData.port})")
+				val info = BouncerServerInfo(serverData.name, serverData.group, serverData.type, address)
+
+				this@VelocityBouncerPlugin.serversById[response.serverId] = info
+				this@VelocityBouncerPlugin.serversByName[serverData.name] = info
+			}
+
+			BouncerListenResponse.Server.UpdateCase.REMOVE ->
+			{
+				println("Remove server ${response.serverId}")
+				val server: BouncerServerInfo =
+					this@VelocityBouncerPlugin.serversById.remove(response.serverId) ?: return
+
+				this@VelocityBouncerPlugin.serversByName.remove(server.name)
+				this@VelocityBouncerPlugin.proxy.unregisterServer(ServerInfo(server.name, server.address))
+			}
+
+			else -> Unit
 		}
 	}
 

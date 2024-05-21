@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package quutio.bouncer;
+
+import "listen.proto";
+import "servers.proto";
+import "session.proto";
+
+option csharp_namespace = "Bouncer.Grpc";
+option java_package = "io.quut.bouncer.grpc";
+option java_multiple_files = true;
+
+service Bouncer {
+	rpc Session(stream BouncerSessionRequest) returns (stream BouncerSessionResponse);
+	rpc Listen(BouncerListenRequest) returns (stream BouncerListenResponse);
+
+	rpc ListServers(ServerListRequest) returns (ServerListResponse);
+	rpc JoinServer(ServerJoinRequest) returns (ServerJoinResponse);
+}
+
+message ServerListRequest {
+}
+
+message ServerListResponse {
+	repeated ServerDetails servers = 1;
+}
+
+message ServerJoinRequest {
+	repeated ServerFilter filter = 1;
+	repeated ServerSort sort = 2;
+
+	repeated bytes players = 3;
+}
+
+message ServerJoinResponse {
+	oneof status {
+		Success success = 1;
+		NoServers noServers = 2;
+	}
+
+	message Success {
+		int32 serverId = 1;
+	}
+
+	message NoServers {
+	}
+}

@@ -3,7 +3,7 @@ package io.quut.bouncer.common.server
 import io.quut.bouncer.api.server.BouncerServerInfo
 import io.quut.bouncer.api.server.IBouncerServer
 import io.quut.bouncer.api.server.IServerManager
-import io.quut.bouncer.grpc.ServerServiceGrpcKt
+import io.quut.bouncer.grpc.BouncerGrpcKt
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -15,8 +15,7 @@ import java.util.IdentityHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-internal class ServerManager(private val stub: ServerServiceGrpcKt.ServerServiceCoroutineStub) :
-	IServerManager
+internal class ServerManager(private val stub: BouncerGrpcKt.BouncerCoroutineStub) : IServerManager
 {
 	private val startSessionSignal: AtomicReference<CompletableJob> = AtomicReference(Job())
 	private var session: ServerManagerSession = ServerManagerSession(this.stub)
@@ -97,7 +96,7 @@ internal class ServerManager(private val stub: ServerServiceGrpcKt.ServerService
 				this.startSessionSignal.getAndSet(Job())
 			}
 
-			this.session.unregisterServer(server)
+			server.unregister()
 		}
 	}
 

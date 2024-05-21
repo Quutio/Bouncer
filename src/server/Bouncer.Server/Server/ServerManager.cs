@@ -4,6 +4,7 @@ using Bouncer.Grpc;
 using Bouncer.Server.Logging;
 using Bouncer.Server.Server.Filter;
 using Bouncer.Server.Server.Listener;
+using Google.Protobuf;
 
 namespace Bouncer.Server.Server;
 
@@ -32,11 +33,40 @@ internal sealed class ServerManager
 		_ = this.Cleanup();
 	}
 
-	internal RegisteredServer Register(ServerData data)
+	internal RegisteredServer Register(ServerData data, ServerStatus? status)
 	{
 		uint id = Interlocked.Increment(ref this.nextId);
 
 		RegisteredServer server = new(this, this.loggerFactory.CreateLogger<RegisteredServer>(), id, data);
+		if (status is not null)
+		{
+			server.Status.Tps = status.Tps;
+			server.Status.Memory = status.Memory;
+			server.Status.MaxMemory = status.MaxMemory;
+
+			switch (status.PlayersCase)
+			{
+				case ServerStatus.PlayersOneofCase.PlayerList:
+				{
+					foreach (ByteString player in status.PlayerList.Players)
+					{
+						server.Join(new Guid(player.Span, bigEndian: true));
+					}
+
+					break;
+				}
+
+				case ServerStatus.PlayersOneofCase.PlayerListHumanReadable:
+				{
+					foreach (string player in status.PlayerListHumanReadable.Players)
+					{
+						server.Join(new Guid(player));
+					}
+
+					break;
+				}
+			}
+		}
 
 		this.serversById[id] = server;
 		this.serversByName.AddOrUpdate(data.Name, static (_, newValue) => newValue, static (_, oldValue, newValue) =>

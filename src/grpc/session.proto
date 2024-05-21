@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package quutio.bouncer;
+
+import "servers.proto";
+import "google/protobuf/duration.proto";
+
+option csharp_namespace = "Bouncer.Grpc";
+option java_package = "io.quut.bouncer.grpc";
+option java_multiple_files = true;
+
+message BouncerSessionRequest {
+	optional int32 requestId = 1;
+
+	oneof request {
+		Close close = 2;
+		Ping ping = 3;
+
+		ServerRegistration serverRegistration = 4;
+		ServerUnregistration serverUnregistration = 5;
+		ServerUpdate serverUpdate = 6;
+	}
+
+	message Close {
+		optional bool intentional = 1;
+	}
+
+	message Ping {
+	}
+
+	message ServerRegistration {
+		int32 trackingId = 1;
+		ServerData data = 2;
+		optional ServerStatus status = 3;
+	}
+
+	message ServerUnregistration {
+		int32 trackingId = 1;
+	}
+
+	message ServerUpdate {
+		int32 trackingId = 1;
+		ServerStatusUpdate status = 2;
+	}
+}
+
+message BouncerSessionResponse {
+	optional int32 requestId = 1;
+
+	oneof response {
+		Settings settings = 2;
+
+		ServerRegistration serverRegistration = 3;
+	}
+
+	message Settings {
+		google.protobuf.Duration pingInterval = 1;
+	}
+
+	message ServerRegistration {
+		int32 serverId = 1;
+	}
+}

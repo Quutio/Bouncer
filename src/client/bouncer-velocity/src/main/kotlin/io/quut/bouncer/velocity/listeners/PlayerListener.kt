@@ -13,16 +13,16 @@ import com.velocitypowered.api.event.player.ServerConnectedEvent
 import com.velocitypowered.api.proxy.Player
 import com.velocitypowered.api.proxy.server.RegisteredServer
 import io.quut.bouncer.api.server.BouncerServerInfo
+import io.quut.bouncer.grpc.ServerFilterKt.group
+import io.quut.bouncer.grpc.ServerFilterKt.name
+import io.quut.bouncer.grpc.ServerFilterKt.type
 import io.quut.bouncer.grpc.ServerJoinRequest
 import io.quut.bouncer.grpc.ServerJoinResponse
 import io.quut.bouncer.grpc.ServerJoinResponse.StatusCase
-import io.quut.bouncer.grpc.ServerSortByPlayerCount
+import io.quut.bouncer.grpc.ServerSort.ByPlayerCount
+import io.quut.bouncer.grpc.ServerSortKt.byPlayerCount
 import io.quut.bouncer.grpc.serverFilter
-import io.quut.bouncer.grpc.serverFilterGroup
-import io.quut.bouncer.grpc.serverFilterName
-import io.quut.bouncer.grpc.serverFilterType
 import io.quut.bouncer.grpc.serverSort
-import io.quut.bouncer.grpc.serverSortByPlayerCount
 import io.quut.bouncer.velocity.VelocityBouncerPlugin
 import io.quut.bouncer.velocity.extensions.eventTask
 import io.quut.bouncer.velocity.extensions.toByteArray
@@ -130,16 +130,15 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 			.addFilter(
 				serverFilter()
 				{
-					this.group = serverFilterGroup()
+					this.group = group()
 					{
 						this.value = "lobby"
 					}
 				}
-			)
-			.addFilter(
+			).addFilter(
 				serverFilter()
 				{
-					this.type = serverFilterType()
+					this.type = type()
 					{
 						this.value = "hub"
 					}
@@ -147,12 +146,12 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 			).addSort(
 				serverSort()
 				{
-					this.byPlayerCount = serverSortByPlayerCount()
+					this.byPlayerCount = byPlayerCount()
 					{
-						this.value = ServerSortByPlayerCount.Order.Ascending
+						this.value = ByPlayerCount.Order.ASCENDING
 					}
 				}
-			).addUser(ByteString.copyFrom(player.uniqueId.toByteArray()))
+			).addPlayers(ByteString.copyFrom(player.uniqueId.toByteArray()))
 
 		failure?.servers?.forEach()
 		{ server ->
@@ -160,7 +159,7 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 				serverFilter()
 				{
 					this.inverse = true
-					this.name = serverFilterName()
+					this.name = name()
 					{
 						this.value = server
 					}
@@ -168,7 +167,7 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 			)
 		}
 
-		val response: ServerJoinResponse = this.plugin.stub.join(builder.build())
+		val response: ServerJoinResponse = this.plugin.stub.joinServer(builder.build())
 		when (response.statusCase)
 		{
 			StatusCase.SUCCESS ->

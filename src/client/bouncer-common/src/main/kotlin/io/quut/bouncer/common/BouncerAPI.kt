@@ -6,14 +6,14 @@ import io.quut.bouncer.api.IBouncerAPI
 import io.quut.bouncer.api.server.BouncerServerInfo
 import io.quut.bouncer.api.server.IServerManager
 import io.quut.bouncer.common.server.ServerManager
-import io.quut.bouncer.grpc.ServerServiceGrpcKt
+import io.quut.bouncer.grpc.BouncerGrpcKt
 import sun.misc.Signal
 import java.util.concurrent.TimeUnit
 
 abstract class BouncerAPI(endpoint: String) : IBouncerAPI
 {
 	private val channel: ManagedChannel = ManagedChannelBuilder.forTarget(endpoint).usePlaintext().build()
-	private val stub: ServerServiceGrpcKt.ServerServiceCoroutineStub = ServerServiceGrpcKt.ServerServiceCoroutineStub(this.channel)
+	private val stub: BouncerGrpcKt.BouncerCoroutineStub = BouncerGrpcKt.BouncerCoroutineStub(this.channel)
 
 	private val _serverManager: ServerManager = ServerManager(this.stub)
 

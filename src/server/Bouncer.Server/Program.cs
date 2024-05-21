@@ -1,5 +1,4 @@
-﻿using Bouncer.Server.Games;
-using Bouncer.Server.Server;
+﻿using Bouncer.Server.Server;
 using Bouncer.Server.Services;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -13,11 +12,9 @@ builder.Services.Configure<HostOptions>(options =>
 builder.Services.AddGrpc();
 
 builder.Services.AddSingleton<ServerManager>();
-builder.Services.AddSingleton<GameManager>();
+//builder.Services.AddSingleton<GameManager>();
 
-builder.Services.AddSingleton<GrpcServerService>();
-builder.Services.AddSingleton<GrpcGameService>();
-builder.Services.AddSingleton<GrpcQueueService>();
+builder.Services.AddSingleton<GrpcBouncerService>();
 
 WebApplication app = builder.Build();
 
@@ -28,9 +25,7 @@ if (builder.Environment.IsDevelopment())
 
 app.UseRouting();
 
-app.MapGrpcService<GrpcServerService>();
-app.MapGrpcService<GrpcGameService>();
-app.MapGrpcService<GrpcQueueService>();
+app.MapGrpcService<GrpcBouncerService>();
 
 app.MapGet("/", async context =>
 {

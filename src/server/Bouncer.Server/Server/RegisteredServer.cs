@@ -17,6 +17,7 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 	public string Name { get; } //Immutable, don't use the one from ServerData
 
 	public ServerData Data { get; set; }
+	public ServerStatus Status { get; set; }
 
 	private readonly CancellationTokenSource cancellationTokenSource;
 
@@ -34,6 +35,7 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 		this.Name = data.Name;
 
 		this.Data = data;
+		this.Status = new ServerStatus();
 
 		this.cancellationTokenSource = new CancellationTokenSource();
 

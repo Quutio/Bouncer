@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package quutio.bouncer;
+
+import "servers.proto";
+
+option csharp_namespace = "Bouncer.Grpc";
+option java_package = "io.quut.bouncer.grpc";
+option java_multiple_files = true;
+
+message BouncerListenRequest {
+	Server server = 1;
+
+	message Server {
+		repeated ServerFilter filter = 1;
+		repeated Details details = 2;
+	}
+
+	enum Details {
+		NONE = 0;
+		PLAYERS = 1;
+		PLAYER_COUNT = 2;
+		TPS = 3;
+		MEMORY = 4;
+	}
+}
+
+message BouncerListenResponse {
+	oneof data {
+		Server server = 1;
+	}
+
+	message Server {
+		int32 serverId = 1;
+		oneof update {
+			Add add = 2;
+			Remove remove = 3;
+			ServerStatusUpdate updateStatus = 4;
+		}
+
+		message Add {
+			ServerData data = 1;
+			optional ServerStatus status = 2;
+		}
+
+		message Remove {
+			ServerRemovelReason reason = 1;
+		}
+	}
+}

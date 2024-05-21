@@ -1,16 +1,18 @@
 package io.quut.bouncer.common.server
 
-import io.quut.bouncer.grpc.ServerServiceGrpcKt
-import io.quut.bouncer.grpc.ServerSessionClose
-import io.quut.bouncer.grpc.ServerSessionPing
-import io.quut.bouncer.grpc.ServerSessionRequest
-import io.quut.bouncer.grpc.ServerSessionResponse
-import io.quut.bouncer.grpc.ServerSessionResponse.ResponseCase
-import io.quut.bouncer.grpc.ServerSessionSettings
-import io.quut.bouncer.grpc.ServerStatusUpdateRequest
+import com.google.protobuf.ByteString
+import io.quut.bouncer.common.extensions.toByteArray
+import io.quut.bouncer.grpc.BouncerGrpcKt
+import io.quut.bouncer.grpc.BouncerSessionRequest
+import io.quut.bouncer.grpc.BouncerSessionRequestKt.close
+import io.quut.bouncer.grpc.BouncerSessionRequestKt.ping
+import io.quut.bouncer.grpc.BouncerSessionRequestKt.serverRegistration
+import io.quut.bouncer.grpc.BouncerSessionRequestKt.serverUnregistration
+import io.quut.bouncer.grpc.BouncerSessionResponse
+import io.quut.bouncer.grpc.bouncerSessionRequest
+import io.quut.bouncer.grpc.playerList
 import io.quut.bouncer.grpc.serverData
-import io.quut.bouncer.grpc.serverRegistrationRequest
-import io.quut.bouncer.grpc.serverUnregistrationRequest
+import io.quut.bouncer.grpc.serverStatus
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -29,13 +31,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.ServerServiceCoroutineStub)
+internal class ServerManagerSession(private val stub: BouncerGrpcKt.BouncerCoroutineStub)
 {
-	private val nextRequestId: AtomicInteger = AtomicInteger(1)
-	private val requestChannel: Channel<ServerSessionRequest> = Channel(capacity = Channel.UNLIMITED)
-	private val requestResponses: ConcurrentMap<Int, CompletableDeferred<ServerSessionResponse>> = ConcurrentHashMap()
+	private val requestChannel: Channel<BouncerSessionRequest> = Channel(capacity = Channel.UNLIMITED)
 
-	private val servers: ConcurrentMap<Int, BouncerServer> = ConcurrentHashMap()
+	private val nextRequestId: AtomicInteger = AtomicInteger()
+	private val requestResponses: ConcurrentMap<Int, CompletableDeferred<*>> = ConcurrentHashMap()
+
+	private val nextTrackingId: AtomicInteger = AtomicInteger()
+	private val serversByServerId: ConcurrentMap<Int, BouncerServer> = ConcurrentHashMap()
 
 	private var pingTask: Job? = null
 
@@ -43,21 +47,31 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 	{
 		this@ServerManagerSession.stub.session(this@ServerManagerSession.requestChannel.receiveAsFlow())
 			.cancellable()
-			.collect()
-			{ response ->
-				if (response.responseCase == ResponseCase.SETTINGS)
-				{
-					return@collect this@ServerManagerSession.setSettings(response.settings)
-				}
-
-				this@ServerManagerSession.requestResponses.remove(response.requestId)?.complete(response)
-			}
+			.collect(this::handleResponse)
 
 		this.pingTask?.cancel()
 		this.pingTask = null
 	}
 
-	private suspend fun setSettings(settings: ServerSessionSettings)
+	@Suppress("UNCHECKED_CAST")
+	private fun handleResponse(response: BouncerSessionResponse)
+	{
+		if (response.responseCase == BouncerSessionResponse.ResponseCase.SETTINGS)
+		{
+			return this.setSettings(response.settings)
+		}
+
+		val callback: CompletableDeferred<*> = this@ServerManagerSession.requestResponses.remove(response.requestId) ?: return
+		when (response.responseCase)
+		{
+			BouncerSessionResponse.ResponseCase.SERVERREGISTRATION ->
+				(callback as CompletableDeferred<BouncerSessionResponse.ServerRegistration>).complete(response.serverRegistration)
+
+			else -> Unit
+		}
+	}
+
+	private fun setSettings(settings: BouncerSessionResponse.Settings)
 	{
 		this.pingTask?.cancel()
 
@@ -67,9 +81,10 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 			while (this.isActive)
 			{
 				val result: ChannelResult<Unit> = this@ServerManagerSession.requestChannel.trySend(
-					ServerSessionRequest.newBuilder().setPing(
-						ServerSessionPing.newBuilder()
-					).build()
+					bouncerSessionRequest()
+					{
+						ping = ping {}
+					}
 				)
 
 				if (!result.isSuccess)
@@ -82,10 +97,10 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 		}
 	}
 
-	private fun sendRequestAsync(builder: ServerSessionRequest.Builder): Deferred<ServerSessionResponse>
+	private fun <T> sendRequestAsync(builder: BouncerSessionRequest.Builder): Deferred<T>
 	{
-		val requestId: Int = this.nextRequestId.getAndIncrement()
-		val deferred: CompletableDeferred<ServerSessionResponse> = CompletableDeferred()
+		val requestId: Int = this.nextRequestId.incrementAndGet()
+		val deferred: CompletableDeferred<T> = CompletableDeferred()
 
 		this.requestResponses[requestId] = deferred
 		this.requestChannel.trySend(builder.setRequestId(requestId).build())
@@ -93,7 +108,7 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 		return deferred
 	}
 
-	private fun sendRequestAndForget(request: ServerSessionRequest)
+	private fun sendRequestAndForget(request: BouncerSessionRequest)
 	{
 		this.requestChannel.trySend(request)
 	}
@@ -101,100 +116,112 @@ internal class ServerManagerSession(private val stub: ServerServiceGrpcKt.Server
 	@OptIn(ExperimentalCoroutinesApi::class)
 	internal fun registerServer(server: BouncerServer)
 	{
-		val job: Deferred<ServerSessionResponse> = this.sendRequestAsync(
-			ServerSessionRequest.newBuilder().setRegistration(
-				serverRegistrationRequest()
-				{
-					this.data = serverData()
-					{
-						this.name = server.info.name
-						this.group = server.info.group
-						this.type = server.info.type
-						this.host = server.info.address.hostString
-						this.port = server.info.address.port
+		val trackingId: Int = this.nextTrackingId.incrementAndGet()
 
-						if (server.info.maxMemory != null)
+		server.prepare(this, trackingId)
+		{ players ->
+			val job: Deferred<BouncerSessionResponse.ServerRegistration> = this.sendRequestAsync(
+				BouncerSessionRequest.newBuilder()
+				.setServerRegistration(
+					serverRegistration()
+					{
+						this.trackingId = trackingId
+						this.data = serverData()
 						{
-							this.maxMemory = server.info.maxMemory!!
+							this.name = server.info.name
+							this.group = server.info.group
+							this.type = server.info.type
+							this.host = server.info.address.hostString
+							this.port = server.info.address.port
+						}
+						this.status = serverStatus()
+						{
+							this.playerList = playerList()
+							{
+								players.forEach { player -> this.players.add(ByteString.copyFrom(player.toByteArray())) }
+							}
+							if (server.info.maxMemory != null)
+							{
+								maxMemory = server.info.maxMemory!!
+							}
 						}
 					}
-				}
+				)
 			)
-		)
 
-		job.invokeOnCompletion()
-		{ ex ->
-			if (ex != null)
-			{
-				return@invokeOnCompletion
-			}
-
-			val serverId: Int = job.getCompleted().registration.serverId // Never add it to the list of servers if we have been unregistered
-			if (!server.registered(this, serverId))
-			{
-				// Also send the unregistration, so it gets out of the load balancer queue
-				return@invokeOnCompletion this@ServerManagerSession.sendUnregisterServer(serverId)
-			}
-
-			this@ServerManagerSession.servers[server.id] = server
-
-			if (!server.registered && this@ServerManagerSession.servers.remove(server.id, server))
-			{
-				this@ServerManagerSession.sendUnregisterServer(serverId)
-			}
-		}
-	}
-
-	private fun sendUnregisterServer(id: Int)
-	{
-		this.sendRequestAndForget(
-			ServerSessionRequest.newBuilder().setUnregistration(
-				serverUnregistrationRequest()
+			job.invokeOnCompletion()
+			{ ex ->
+				if (ex != null)
 				{
-					this.serverId = id
+					return@invokeOnCompletion
 				}
-			).build()
-		)
+
+				// Never add it to the list of servers if we have been unregistered
+				val serverId: Int = job.getCompleted().serverId
+				if (!server.registered(this, serverId))
+				{
+					// Also send the unregistration, so it gets out of the load balancer queue
+					// NOTE: USE TRACKING ID! **NOT** SERVER ID!
+					return@invokeOnCompletion this@ServerManagerSession.sendUnregisterServer(trackingId)
+				}
+
+				this@ServerManagerSession.serversByServerId[serverId] = server
+
+				if (!server.registered && this@ServerManagerSession.serversByServerId.remove(serverId, server))
+				{
+					// NOTE: USE TRACKING ID! **NOT** SERVER ID!
+					this@ServerManagerSession.sendUnregisterServer(trackingId)
+				}
+			}
+		}
 	}
 
-	internal fun sendUpdate(update: ServerStatusUpdateRequest)
+	internal fun unregisterServer(server: BouncerServer, trackingId: Int, serverId: Int)
+	{
+		if (!this.serversByServerId.remove(serverId, server))
+		{
+			return
+		}
+
+		// NOTE: USE TRACKING ID! **NOT** SERVER ID!
+		this.sendUnregisterServer(trackingId)
+	}
+
+	private fun sendUnregisterServer(trackingId: Int)
 	{
 		this.sendRequestAndForget(
-			ServerSessionRequest
-				.newBuilder()
-				.setUpdate(update)
-				.build()
+			bouncerSessionRequest()
+			{
+				serverUnregistration = serverUnregistration()
+				{
+					this.trackingId = trackingId
+				}
+			}
 		)
 	}
 
-	internal fun unregisterServer(server: BouncerServer)
+	internal fun sendUpdate(update: BouncerSessionRequest.ServerUpdate)
 	{
-		// If we never succeeded registering the server we are done
-		if (!server.unregister())
-		{
-			return
-		}
-
-		if (!this.servers.remove(server.id, server))
-		{
-			return
-		}
-
-		this.sendUnregisterServer(server.id)
+		this.sendRequestAndForget(
+			bouncerSessionRequest()
+			{
+				this.serverUpdate = update
+			}
+		)
 	}
 
 	internal fun shutdown(intentional: Boolean = false)
 	{
-		this.servers.values.forEach { server -> server.lostConnection() }
+		this.serversByServerId.values.forEach { server -> server.lostConnection() }
 
 		this.requestChannel.trySend(
-			ServerSessionRequest.newBuilder()
-				.setClose(
-					ServerSessionClose.newBuilder()
-						.setIntentional(intentional)
-						.build()
-				)
-				.build()
+			bouncerSessionRequest()
+			{
+				close = close()
+				{
+					this.intentional = intentional
+				}
+			}
 		)
 
 		this.requestChannel.close()

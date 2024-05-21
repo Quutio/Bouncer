@@ -10,21 +10,21 @@ using Grpc.Core;
 
 namespace Bouncer.Server.Services;
 
-internal sealed class GrpcServerService(ServerManager serverManager) : ServerService.ServerServiceBase
+internal sealed class GrpcBouncerService(ServerManager serverManager) : Grpc.Bouncer.BouncerBase
 {
 	private readonly ServerManager serverManager = serverManager;
 
-	public override async Task Session(IAsyncStreamReader<ServerSessionRequest> requestStream, IServerStreamWriter<ServerSessionResponse> responseStream, ServerCallContext context)
+	public override async Task Session(IAsyncStreamReader<BouncerSessionRequest> requestStream, IServerStreamWriter<BouncerSessionResponse> responseStream, ServerCallContext context)
 	{
-		await responseStream.WriteAsync(new ServerSessionResponse
+		await responseStream.WriteAsync(new BouncerSessionResponse
 		{
-			Settings = new ServerSessionSettings
+			Settings = new BouncerSessionResponse.Types.Settings
 			{
 				PingInterval = Duration.FromTimeSpan(TimeSpan.FromSeconds(1))
 			}
 		});
 
-		Dictionary<uint, RegisteredServer> servers = [];
+		Dictionary<int, RegisteredServer> servers = [];
 
 		try
 		{
@@ -33,11 +33,11 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 
 			while (await requestStream.MoveNext(timeoutTokenSource.Token).ConfigureAwait(false))
 			{
-				ServerSessionRequest request = requestStream.Current;
+				BouncerSessionRequest request = requestStream.Current;
 
 				switch (request.RequestCase)
 				{
-					case ServerSessionRequest.RequestOneofCase.Close:
+					case BouncerSessionRequest.RequestOneofCase.Close:
 					{
 						foreach (RegisteredServer server in servers.Values)
 						{
@@ -49,25 +49,25 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 						return;
 					}
 
-					case ServerSessionRequest.RequestOneofCase.Ping:
+					case BouncerSessionRequest.RequestOneofCase.Ping:
 					{
 						timeoutTimer.Change(TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
 
 						break;
 					}
 
-					case ServerSessionRequest.RequestOneofCase.Registration:
+					case BouncerSessionRequest.RequestOneofCase.ServerRegistration:
 					{
-						RegisteredServer server = this.serverManager.Register(request.Registration.Data);
+						RegisteredServer server = this.serverManager.Register(request.ServerRegistration.Data, request.ServerRegistration.Status);
 
-						servers[server.Id] = server;
+						servers[request.ServerRegistration.TrackingId] = server;
 
 						if (request.HasRequestId)
 						{
-							await responseStream.WriteAsync(new ServerSessionResponse
+							await responseStream.WriteAsync(new BouncerSessionResponse
 							{
 								RequestId = request.RequestId,
-								Registration = new ServerRegistrationResponse
+								ServerRegistration = new BouncerSessionResponse.Types.ServerRegistration
 								{
 									ServerId = (int)server.Id
 								}
@@ -77,10 +77,9 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 						break;
 					}
 
-					case ServerSessionRequest.RequestOneofCase.Unregistration:
+					case BouncerSessionRequest.RequestOneofCase.ServerUnregistration:
 					{
-						uint serverId = (uint)request.Unregistration.ServerId;
-						if (!servers.Remove(serverId, out RegisteredServer? server))
+						if (!servers.Remove(request.ServerUnregistration.TrackingId, out RegisteredServer? server))
 						{
 							continue;
 						}
@@ -89,7 +88,7 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 
 						if (request.HasRequestId)
 						{
-							await responseStream.WriteAsync(new ServerSessionResponse
+							await responseStream.WriteAsync(new BouncerSessionResponse
 							{
 								RequestId = request.RequestId
 							}, timeoutTokenSource.Token).ConfigureAwait(false);
@@ -98,18 +97,18 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 						break;
 					}
 
-					case ServerSessionRequest.RequestOneofCase.Update:
+					case BouncerSessionRequest.RequestOneofCase.ServerUpdate:
 					{
-						if (!servers.TryGetValue((uint)request.Update.ServerId, out RegisteredServer? server))
+						if (!servers.TryGetValue(request.ServerUpdate.TrackingId, out RegisteredServer? server))
 						{
 							continue;
 						}
 
-						this.Update(server, request.Update);
+						this.Update(server, request.ServerUpdate.Status);
 
 						if (request.HasRequestId)
 						{
-							await responseStream.WriteAsync(new ServerSessionResponse
+							await responseStream.WriteAsync(new BouncerSessionResponse
 							{
 								RequestId = request.RequestId
 							}, timeoutTokenSource.Token).ConfigureAwait(false);
@@ -137,35 +136,30 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 		}
 	}
 
-	private void Update(RegisteredServer server, ServerStatusUpdateRequest update)
+	private void Update(RegisteredServer server, ServerStatusUpdate update)
 	{
-		switch (update.UpdateCase)
+		foreach (ByteString player in update.PlayersJoined)
 		{
-			case ServerStatusUpdateRequest.UpdateOneofCase.UserJoin:
-			{
-				server.Join(new Guid(update.UserJoin.User.Span, bigEndian: true));
+			server.Join(new Guid(player.Span, bigEndian: true));
+		}
 
-				break;
-			}
+		foreach (ByteString player in update.PlayersLeft)
+		{
+			server.Quit(new Guid(player.Span, bigEndian: true));
+		}
 
-			case ServerStatusUpdateRequest.UpdateOneofCase.UserQuit:
-			{
-				server.Quit(new Guid(update.UserQuit.User.Span, bigEndian: true));
+		if (update.HasTps)
+		{
+			server.Status.Tps = update.Tps;
+		}
 
-				break;
-			}
-
-			case ServerStatusUpdateRequest.UpdateOneofCase.Heartbeat:
-			{
-				server.Data.Tps = update.Heartbeat.Tps;
-				server.Data.Memory = update.Heartbeat.Memory;
-
-				break;
-			}
+		if (update.HasMemory)
+		{
+			server.Status.Memory = update.Memory;
 		}
 	}
 
-	public override Task<ServerJoinResponse> Join(ServerJoinRequest request, ServerCallContext context)
+	public override Task<ServerJoinResponse> JoinServer(ServerJoinRequest request, ServerCallContext context)
 	{
 		IServerFilter? filter = this.CreateFilter(request.Filter);
 		IServerSort? sort = this.CreateSort(request.Sort);
@@ -178,14 +172,14 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 				continue;
 			}
 
-			foreach (ByteString user in request.User)
+			foreach (ByteString user in request.Players)
 			{
 				server.ReserveSlot(new Guid(user.Span, bigEndian: true));
 			}
 
 			return Task.FromResult(new ServerJoinResponse
 			{
-				Success = new ServerJoinSuccess
+				Success = new ServerJoinResponse.Types.Success
 				{
 					ServerId = (int)server.Id
 				}
@@ -194,38 +188,42 @@ internal sealed class GrpcServerService(ServerManager serverManager) : ServerSer
 
 		return Task.FromResult(new ServerJoinResponse
 		{
-			NoServers = new ServerJoinNoServers()
+			NoServers = new ServerJoinResponse.Types.NoServers()
 		});
 	}
 
-	public override Task<ServerListResponse> List(ServerListRequest request, ServerCallContext context)
+	public override Task<ServerListResponse> ListServers(ServerListRequest request, ServerCallContext context)
 	{
 		ServerListResponse response = new();
 		foreach (RegisteredServer server in this.serverManager.Servers)
 		{
-			ServerListData serverListData = new()
+			ServerStatus status = new()
 			{
-				ServerId = (int)server.Id,
-
-				Data = server.Data
+				PlayerListHumanReadable = new PlayerListHumanReadable()
 			};
 
 			foreach (Guid player in server.Players)
 			{
-				serverListData.Players.Add(player.ToString());
+				status.PlayerListHumanReadable.Players.Add(player.ToString());
 			}
 
-			response.Servers.Add(serverListData);
+			response.Servers.Add(new ServerDetails
+			{
+				ServerId = (int)server.Id,
+
+				Data = server.Data,
+				Status = status
+			});
 		}
 
 		return Task.FromResult(response);
 	}
 
-	public override async Task Listen(ServerListenRequest request, IServerStreamWriter<ServerStatusUpdate> responseStream, ServerCallContext context)
+	public override async Task Listen(BouncerListenRequest request, IServerStreamWriter<BouncerListenResponse> responseStream, ServerCallContext context)
 	{
 		try
 		{
-			ServerStatusListener listener = this.serverManager.CreateServerListener(this.CreateFilter(request.Filter));
+			ServerStatusListener listener = this.serverManager.CreateServerListener(this.CreateFilter(request.Server.Filter));
 
 			await listener.Listen(responseStream, context.CancellationToken).ConfigureAwait(false);
 		}

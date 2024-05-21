@@ -4,9 +4,9 @@ namespace Bouncer.Server.Server.Sort;
 
 internal sealed class ServerPlayerCountSorter : IServerSort
 {
-	private readonly ServerSortByPlayerCount.Types.Order order;
+	private readonly ServerSort.Types.ByPlayerCount.Types.Order order;
 
-	internal ServerPlayerCountSorter(ServerSortByPlayerCount.Types.Order order)
+	internal ServerPlayerCountSorter(ServerSort.Types.ByPlayerCount.Types.Order order)
 	{
 		this.order = order;
 	}
@@ -16,7 +16,7 @@ internal sealed class ServerPlayerCountSorter : IServerSort
 		int xCount = x?.Players.Count ?? 0;
 		int yCount = y?.Players.Count ?? 0;
 
-		if (this.order == ServerSortByPlayerCount.Types.Order.Ascending)
+		if (this.order == ServerSort.Types.ByPlayerCount.Types.Order.Ascending)
 		{
 			return xCount - yCount;
 		}

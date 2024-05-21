@@ -10,7 +10,7 @@ internal class CommandListener(private val bouncer: IBouncerAPI)
 	@Listener(order = Order.POST)
 	private fun onExecuteCommandEvent(event: ExecuteCommandEvent.Pre)
 	{
-		if (event.result().isPresent || event.command() != "stop" || !event.commandCause().hasPermission("minecraft.command.stop"))
+		if (event.result().isPresent || (event.command() != "stop" && event.command() != "minecraft:stop") || !event.commandCause().hasPermission("minecraft.command.stop"))
 		{
 			return
 		}
@@ -21,7 +21,7 @@ internal class CommandListener(private val bouncer: IBouncerAPI)
 	@Listener(order = Order.POST)
 	private fun onExecuteCommandEvent(event: ExecuteCommandEvent.Post)
 	{
-		if (!event.result().isSuccess || event.command() != "stop")
+		if (!event.result().isSuccess || (event.command() != "stop" && event.command() != "minecraft:stop"))
 		{
 			return
 		}

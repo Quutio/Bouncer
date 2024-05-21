@@ -11,7 +11,7 @@ internal class CommandListener(private val bouncer: IBouncerAPI) : Listener
 	@EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
 	fun onServerCommand(event: ServerCommandEvent)
 	{
-		if (event.command != "stop" || !event.sender.hasPermission("minecraft.command.stop"))
+		if ((event.command != "stop" && event.command != "minecraft:stop") || !event.sender.hasPermission("minecraft.command.stop"))
 		{
 			return
 		}

@@ -6,12 +6,15 @@ import io.quut.bouncer.api.server.IBouncerServer
 import io.quut.bouncer.common.BouncerAPI
 import io.quut.bouncer.sponge.config.PluginConfig
 import io.quut.bouncer.sponge.listeners.CommandListener
-import io.quut.bouncer.sponge.listeners.PlayerListener
+import io.quut.bouncer.sponge.listeners.FallbackServerListener
+import io.quut.harmony.api.IHarmonyEventListener
+import io.quut.harmony.api.IHarmonyScopeOptions
 import org.spongepowered.api.Game
 import org.spongepowered.api.Server
 import org.spongepowered.api.config.DefaultConfig
 import org.spongepowered.api.event.EventManager
 import org.spongepowered.api.event.Listener
+import org.spongepowered.api.event.Order
 import org.spongepowered.api.event.lifecycle.ConstructPluginEvent
 import org.spongepowered.api.event.lifecycle.StartedEngineEvent
 import org.spongepowered.api.event.lifecycle.StoppedGameEvent
@@ -30,12 +33,9 @@ import java.time.Duration
 @Plugin("bouncer")
 class SpongeBouncerPlugin @Inject constructor(
 	private val pluginContainer: PluginContainer,
-
 	private val game: Game,
 	private val eventManager: EventManager,
-
-	@DefaultConfig(sharedRoot = false) private val configLoader: ConfigurationLoader<CommentedConfigurationNode>
-)
+	@DefaultConfig(sharedRoot = false) private val configLoader: ConfigurationLoader<CommentedConfigurationNode>)
 {
 	private lateinit var config: PluginConfig
 
@@ -50,10 +50,10 @@ class SpongeBouncerPlugin @Inject constructor(
 		this.config = node.require(PluginConfig::class.java)
 		this.configLoader.save(node)
 
-		this.bouncer = SpongeBouncerAPI(event.game(), System.getenv("BOUNCER_ADDRESS") ?: this.config.apiUrl)
+		this.bouncer = SpongeBouncerAPI(this.pluginContainer, event.game(), System.getenv("BOUNCER_ADDRESS") ?: this.config.apiUrl)
 	}
 
-	@Listener
+	@Listener(order = Order.PRE)
 	fun onStarted(event: StartedEngineEvent<Server>)
 	{
 		this.bouncer.installShutdownSignal()
@@ -78,13 +78,23 @@ class SpongeBouncerPlugin @Inject constructor(
 			maxMemory = (Runtime.getRuntime().maxMemory() / 1024L / 1024L).toInt()
 		)
 
-		this.bouncerServer = this.bouncer.serverManager.registerServer(info)
-
 		val lookup: MethodHandles.Lookup = MethodHandles.lookup()
 
-		this.eventManager
-			.registerListeners(this.pluginContainer, PlayerListener(this.bouncerServer), lookup)
-			.registerListeners(this.pluginContainer, CommandListener(this.bouncer), lookup)
+		if (this.config.fallback)
+		{
+			this.bouncerServer = this.bouncer.serverManager.registerServer(info, IHarmonyScopeOptions.of(
+				IHarmonyEventListener.of(this.pluginContainer, { server -> FallbackServerListener.Accept(server) }, lookup)))
+		}
+		else
+		{
+			this.bouncerServer = this.bouncer.serverManager.registerServer(info, IHarmonyScopeOptions.of(
+				IHarmonyEventListener.of(this.pluginContainer, { _ -> FallbackServerListener.Refuse() }, lookup)))
+		}
+
+		this.bouncer.serverManager.defaultServer = this.bouncerServer
+		this.bouncer.serverManager.setFallback(this.bouncerServer)
+
+		this.eventManager.registerListeners(this.pluginContainer, CommandListener(this.bouncer), lookup)
 
 		this.game.asyncScheduler().submit(
 			Task.builder()
@@ -97,8 +107,7 @@ class SpongeBouncerPlugin @Inject constructor(
 						tps = (this.game.server().ticksPerSecond() * 100).toInt(),
 						memory = ((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024L / 1024L).toInt()
 					)
-				}
-				.build()
+				}.build()
 		)
 	}
 

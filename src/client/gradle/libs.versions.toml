@@ -1,10 +1,11 @@
 [versions]
-kotlin = "1.9.22"
-kotlinx = "1.8.0"
-ptotobuf = "3.25.3"
-grpc-protobuf = "1.62.2"
+kotlin = "2.0.0"
+kotlinx = "1.8.1"
+ptotobuf = "4.27.0"
+grpc-protobuf = "1.64.0"
 grpc-kotlin = "1.4.1"
 velocity = "3.3.0-SNAPSHOT"
+shadow = "8.1.7"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin" }
@@ -23,6 +24,6 @@ velocity = { module = "com.velocitypowered:velocity-api", version.ref = "velocit
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 protobuf = { id = "com.google.protobuf", version = "0.9.4" }
-shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
+shadow = { id = "io.github.goooler.shadow", version.ref = "shadow" }
 spotless = { id = "com.diffplug.spotless", version = "6.25.0" }
-sponge = { id = "org.spongepowered.gradle.plugin", version = "2.0.0" }
+sponge = { id = "org.spongepowered.gradle.plugin", version = "2.2.0" }

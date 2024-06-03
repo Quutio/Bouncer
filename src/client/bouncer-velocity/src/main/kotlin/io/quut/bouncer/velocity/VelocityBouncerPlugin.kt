@@ -6,6 +6,7 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent
 import com.velocitypowered.api.plugin.Plugin
 import com.velocitypowered.api.proxy.ProxyServer
+import com.velocitypowered.api.proxy.server.RegisteredServer
 import com.velocitypowered.api.proxy.server.ServerInfo
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
@@ -15,7 +16,10 @@ import io.quut.bouncer.grpc.BouncerListenRequestKt.server
 import io.quut.bouncer.grpc.BouncerListenResponse
 import io.quut.bouncer.grpc.ServerData
 import io.quut.bouncer.grpc.bouncerListenRequest
+import io.quut.bouncer.velocity.commands.PlayCommand
+import io.quut.bouncer.velocity.commands.QueueCommand
 import io.quut.bouncer.velocity.listeners.PlayerListener
+import io.quut.bouncer.velocity.queue.QueueManager
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -28,7 +32,7 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 	private lateinit var bouncer: VelocityBouncerAPI
 
 	internal val serversByName: MutableMap<String, BouncerServerInfo> = mutableMapOf()
-	internal val serversById: MutableMap<Int, BouncerServerInfo> = mutableMapOf()
+	internal val serversById: MutableMap<Int, Pair<BouncerServerInfo, RegisteredServer>> = mutableMapOf()
 
 	private val bouncerAddress: String = System.getenv("BOUNCER_ADDRESS") ?: "localhost:5000"
 
@@ -42,6 +46,20 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 		this.bouncer.installShutdownSignal()
 
 		this.proxy.eventManager.register(this, PlayerListener(this))
+
+		this.proxy.commandManager.register(
+			this.proxy.commandManager.metaBuilder("queue")
+			.plugin(this)
+			.build(),
+				QueueCommand.createQueueCommand(QueueManager(this.stub, this.proxy))
+		)
+
+		this.proxy.commandManager.register(
+			this.proxy.commandManager.metaBuilder("play")
+			.plugin(this)
+			.build(),
+				PlayCommand.createPlayCommand(this, this.stub)
+		)
 
 		@OptIn(DelicateCoroutinesApi::class)
 		GlobalScope.launch()
@@ -83,12 +101,12 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 			{
 				val serverData: ServerData = response.add.data
 				val address: InetSocketAddress = InetSocketAddress.createUnresolved(serverData.host, serverData.port)
-				this@VelocityBouncerPlugin.proxy.registerServer(ServerInfo(serverData.name, address))
+				val registeredServer: RegisteredServer = this@VelocityBouncerPlugin.proxy.registerServer(ServerInfo(serverData.name, address))
 
 				println("Add server ${response.serverId} (${serverData.host}:${serverData.port})")
 				val info = BouncerServerInfo(serverData.name, serverData.group, serverData.type, address)
 
-				this@VelocityBouncerPlugin.serversById[response.serverId] = info
+				this@VelocityBouncerPlugin.serversById[response.serverId] = Pair(info, registeredServer)
 				this@VelocityBouncerPlugin.serversByName[serverData.name] = info
 			}
 
@@ -96,7 +114,7 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 			{
 				println("Remove server ${response.serverId}")
 				val server: BouncerServerInfo =
-					this@VelocityBouncerPlugin.serversById.remove(response.serverId) ?: return
+					this@VelocityBouncerPlugin.serversById.remove(response.serverId)?.first ?: return
 
 				this@VelocityBouncerPlugin.serversByName.remove(server.name)
 				this@VelocityBouncerPlugin.proxy.unregisterServer(ServerInfo(server.name, server.address))

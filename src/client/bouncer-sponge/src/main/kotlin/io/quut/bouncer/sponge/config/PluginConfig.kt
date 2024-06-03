@@ -9,4 +9,5 @@ class PluginConfig
 	var group: String = "survival"
 	var type: String = "vanilla"
 	var apiUrl: String = "localhost:5000"
+	var fallback: Boolean = true
 }

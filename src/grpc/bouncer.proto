@@ -3,6 +3,7 @@ syntax = "proto3";
 package quutio.bouncer;
 
 import "listen.proto";
+import "queue.proto";
 import "servers.proto";
 import "session.proto";
 
@@ -11,11 +12,14 @@ option java_package = "io.quut.bouncer.grpc";
 option java_multiple_files = true;
 
 service Bouncer {
-	rpc Session(stream BouncerSessionRequest) returns (stream BouncerSessionResponse);
+	rpc Session(stream ClientSessionMessage) returns (stream ServerSessionMessage);
 	rpc Listen(BouncerListenRequest) returns (stream BouncerListenResponse);
 
 	rpc ListServers(ServerListRequest) returns (ServerListResponse);
 	rpc JoinServer(ServerJoinRequest) returns (ServerJoinResponse);
+
+	rpc JoinGame(JoinGameRequest) returns (JoinGameResponse);
+	rpc GameQueue(stream GameQueueRequest) returns (stream GameQueueResponse);
 }
 
 message ServerListRequest {
@@ -40,6 +44,26 @@ message ServerJoinResponse {
 
 	message Success {
 		int32 serverId = 1;
+	}
+
+	message NoServers {
+	}
+}
+
+message JoinGameRequest {
+	string gamemode = 1;
+	repeated bytes players = 2;
+}
+
+message JoinGameResponse {
+	oneof status {
+		Success success = 1;
+		NoServers noServers = 2;
+	}
+
+	message Success {
+		int32 serverId = 1;
+		int32 gameId = 2;
 	}
 
 	message NoServers {

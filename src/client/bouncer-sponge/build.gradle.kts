@@ -14,10 +14,12 @@ version = "1.0-SNAPSHOT"
 
 dependencies {
 	implementation(project(":bouncer-common"))
+
+	implementation("io.quut:harmony-sponge:1.0")
 }
 
 sponge {
-	apiVersion("10.0.0")
+	apiVersion("11.0.0-SNAPSHOT")
 	license("MIT")
 	loader {
 		name(PluginLoaders.JAVA_PLAIN)
@@ -45,7 +47,7 @@ sponge {
 	}
 }
 
-val targetJava = 17
+val targetJava = 21
 val targetJavaVersion = JavaVersion.toVersion(targetJava)
 java {
 	sourceCompatibility = targetJavaVersion
@@ -79,6 +81,7 @@ tasks.withType<ShadowJar> {
 	relocate("io", "io.quut.bouncer.libs.io") {
 		exclude("io.quut.**")
 	}
+	relocate("io.quut.harmony", "io.quut.bouncer.libs.io.quut.harmony")
 	relocate("javax.annotation", "io.quut.bouncer.libs.javax.annotation")
 	relocate("kotlin", "io.quut.bouncer.libs.kotlin")
 	relocate("kotlinx", "io.quut.bouncer.libs.kotlinx")

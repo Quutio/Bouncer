@@ -173,7 +173,7 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 			StatusCase.SUCCESS ->
 			{
 				val server: BouncerServerInfo =
-					this@PlayerListener.plugin.serversById[response.success.serverId] ?: return null
+					this@PlayerListener.plugin.serversById[response.success.serverId]?.first ?: return null
 
 				return plugin.proxy.getServer(server.name).orElse(null)
 			}

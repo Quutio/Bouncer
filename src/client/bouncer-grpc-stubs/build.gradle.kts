@@ -48,3 +48,7 @@ protobuf {
 		}
 	}
 }
+
+tasks.withType<Jar> {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

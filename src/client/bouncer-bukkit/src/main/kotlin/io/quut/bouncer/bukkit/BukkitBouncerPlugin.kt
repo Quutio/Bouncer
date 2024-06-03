@@ -6,6 +6,7 @@ import io.quut.bouncer.bukkit.config.PluginConfig
 import io.quut.bouncer.bukkit.listeners.CommandListener
 import io.quut.bouncer.bukkit.listeners.PlayerListener
 import io.quut.bouncer.common.BouncerAPI
+import io.quut.harmony.api.IHarmonyScopeOptions
 import ninja.leaping.configurate.ConfigurationNode
 import ninja.leaping.configurate.yaml.YAMLConfigurationLoader
 import org.bukkit.entity.Player
@@ -28,7 +29,7 @@ class BukkitBouncerPlugin : JavaPlugin()
 		this.saveDefaultConfig()
 		this.loadPluginConfig()
 
-		this.bouncer = BukkitBouncerAPI(this.server, config.apiUrl)
+		this.bouncer = BukkitBouncerAPI(this.server, this.config.apiUrl)
 	}
 
 	override fun onEnable()
@@ -55,7 +56,7 @@ class BukkitBouncerPlugin : JavaPlugin()
 			maxMemory = (Runtime.getRuntime().maxMemory() / 1024L / 1024L).toInt()
 		)
 
-		this.bouncerServer = this.bouncer.serverManager.registerServer(info)
+		this.bouncerServer = this.bouncer.serverManager.registerServer(info, IHarmonyScopeOptions.validate())
 
 		for (player: Player in this.server.onlinePlayers)
 		{

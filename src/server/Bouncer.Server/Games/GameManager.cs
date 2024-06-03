@@ -1,63 +1,36 @@
-﻿////using System.Collections.Concurrent;
-////using Bouncer.Grpc;
-////using Bouncer.Server.Games.Server;
-////using Bouncer.Server.Server;
+﻿using System.Collections.Concurrent;
+using Bouncer.Grpc;
+using Bouncer.Server.Server;
+using Bouncer.Server.Session;
 
-////namespace Bouncer.Server.Games;
+namespace Bouncer.Server.Games;
 
-////internal sealed class GameManager(ServerManager serverManager)
-////{
-////	private readonly ServerManager serverManager = serverManager;
+internal sealed class GameManager(ServerManager serverManager)
+{
+	private readonly ServerManager serverManager = serverManager;
 
-////	private readonly ConcurrentDictionary<uint, ServerGameManager> gamesByServer = [];
+	private readonly ConcurrentDictionary<uint, RegisteredGame> games = [];
 
-////	internal void Register(uint serverId, GameData gameData)
-////	{
-////		if (!this.gamesByServer.TryGetValue(serverId, out ServerGameManager? manager))
-////		{
-////			if (!this.serverManager.TryGetServer(serverId, out RegisteredServer? server))
-////			{
-////				//There's no server registered with this id..
-////				return;
-////			}
+	private uint nextId;
 
-////			while (true)
-////			{
-////				manager = new ServerGameManager(server);
+	internal RegisteredGame Register(BouncerSession session, RegisteredServer server, GameData gameData)
+	{
+		uint id = Interlocked.Increment(ref this.nextId);
 
-////				if (this.gamesByServer.TryAdd(serverId, manager))
-////				{
-////					server.CancellationToken.UnsafeRegister(state =>
-////					{
-////						this.Unregister((ServerGameManager)state!);
-////					}, manager);
+		RegisteredGame game = new(session, server, id, gameData);
 
-////					if (server.CancellationToken.IsCancellationRequested)
-////					{
-////						return;
-////					}
+		this.games[id] = game;
 
-////					break;
-////				}
-////				else if (this.gamesByServer.TryGetValue(serverId, out manager))
-////				{
-////					break;
-////				}
-////			}
-////		}
+		return game;
+	}
 
-////		RegisteredGame game = new();
+	internal void Unregister(RegisteredGame game)
+	{
+		if (!this.games.TryRemove(game.Id, out _))
+		{
+			return;
+		}
+	}
 
-////		manager.Register(game);
-////	}
-
-////	internal void Unregister(ServerGameManager manager)
-////	{
-////		if (this.gamesByServer.TryRemove(manager.Server.Id, out _))
-////		{
-////			return;
-////		}
-
-////		manager.Unregister();
-////	}
-////}
+	internal ICollection<RegisteredGame> Games => this.games.Values;
+}

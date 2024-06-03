@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package quutio.bouncer;
+
+option csharp_namespace = "Bouncer.Grpc";
+option java_package = "io.quut.bouncer.grpc";
+option java_multiple_files = true;
+
+message GameQueueRequest {
+	optional int32 requestId = 1;
+
+	oneof message {
+		Join join = 2;
+		ConfirmPrepapre confirmPrepare = 3;
+		AcceptMatch acceptMatch = 4;
+		RefuseMatch refuseMatch = 5;
+		Leave leave = 6;
+	}
+
+	message Join {
+		int32 trackingId = 1;
+		string gamemode = 2;
+		repeated bytes players = 3;
+	}
+
+	message ConfirmPrepapre {
+		repeated int32 queueIds = 1;
+	}
+
+	message AcceptMatch {
+		int32 queueId = 1;
+		int32 playerIndex = 2;
+	}
+
+	message RefuseMatch {
+		int32 queueId = 1;
+		int32 playerIndex = 2;
+	}
+
+	message Leave {
+		int32 queueId = 1;
+	}
+}
+
+message GameQueueResponse {
+	optional int32 requestId = 1;
+
+	oneof message {
+		ConfirmJoin confirmJoin = 2;
+		Prepapre prepare = 3;
+		Confirmation confirmation = 4;
+		Accepted accepted = 5;
+	}
+
+	message ConfirmJoin {
+		oneof rsponse {
+			Success success = 1;
+		}
+
+		message Success {
+			int32 queueId = 1;
+			int32 estimatedQueueTime = 2;
+		}
+	}
+
+	message Prepapre {
+		repeated int32 queueIds = 1;
+	}
+
+	message Confirmation {
+		repeated int32 queueIds = 1;
+	}
+
+	message Accepted {
+		repeated int32 queueIds = 1;
+		int32 serverId = 2;
+		int32 gameId = 3;
+	}
+}

@@ -1,3 +1,5 @@
 package io.quut.bouncer.api.game
 
-interface IBouncerGame
+import io.quut.bouncer.api.IBouncerScope
+
+interface IBouncerGame : IBouncerScope

@@ -8,7 +8,9 @@
 
 	<ItemGroup>
 		<Protobuf Include="..\..\grpc\bouncer.proto" GrpcServices="Server" />
+		<Protobuf Include="..\..\grpc\games.proto" GrpcServices="Server" />
 		<Protobuf Include="..\..\grpc\listen.proto" GrpcServices="Server" />
+		<Protobuf Include="..\..\grpc\queue.proto" GrpcServices="Server" />
 		<Protobuf Include="..\..\grpc\servers.proto" GrpcServices="Server" />
 		<Protobuf Include="..\..\grpc\session.proto" GrpcServices="Server" />
 	</ItemGroup>

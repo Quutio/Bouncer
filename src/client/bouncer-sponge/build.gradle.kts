@@ -15,7 +15,7 @@ version = "1.0-SNAPSHOT"
 dependencies {
 	implementation(project(":bouncer-common"))
 
-	implementation("io.quut:harmony-sponge:1.0")
+	implementation("io.quut:harmony-sponge:1.2.1")
 }
 
 sponge {

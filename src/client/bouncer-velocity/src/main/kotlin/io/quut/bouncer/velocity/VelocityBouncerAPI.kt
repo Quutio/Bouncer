@@ -1,6 +1,6 @@
 package io.quut.bouncer.velocity
 
-import io.quut.bouncer.api.server.BouncerServerInfo
+import io.quut.bouncer.api.server.IBouncerServerInfo
 import io.quut.bouncer.common.BouncerAPI
 import io.quut.bouncer.common.server.AbstractServerManager
 import io.quut.bouncer.grpc.BouncerGrpcKt
@@ -18,19 +18,19 @@ internal class VelocityBouncerAPI(private val plugin: VelocityBouncerPlugin, end
 		this.plugin.proxy.shutdown()
 	}
 
-	override fun allServers(): Map<String, BouncerServerInfo>
+	override fun allServers(): Map<String, IBouncerServerInfo>
 	{
 		return plugin.serversByName.toMap()
 	}
 
-	override fun serversByGroup(group: String): Map<String, BouncerServerInfo>
+	override fun serversByGroup(group: String): Map<String, IBouncerServerInfo>
 	{
 		return plugin.serversByName.entries
 			.filter { it.value.group == group }
 			.associateBy({it.key}, {it.value})
 	}
 
-	override fun serverByName(name: String): BouncerServerInfo?
+	override fun serverByName(name: String): IBouncerServerInfo?
 	{
 		return plugin.serversByName[name]
 	}

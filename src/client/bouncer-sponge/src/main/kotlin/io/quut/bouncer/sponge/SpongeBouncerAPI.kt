@@ -2,6 +2,7 @@ package io.quut.bouncer.sponge
 
 import io.quut.bouncer.common.BouncerAPI
 import io.quut.bouncer.common.server.AbstractServerManager
+import io.quut.bouncer.common.user.UserManager
 import io.quut.bouncer.grpc.BouncerGrpcKt
 import io.quut.bouncer.sponge.server.SpongeServerManager
 import org.spongepowered.api.Game
@@ -9,6 +10,8 @@ import org.spongepowered.plugin.PluginContainer
 
 internal class SpongeBouncerAPI(private val pluginContainer: PluginContainer, private val game: Game, endpoint: String) : BouncerAPI(endpoint)
 {
+	val userManager: UserManager = UserManager()
+
 	init
 	{
 		this.init()
@@ -16,7 +19,7 @@ internal class SpongeBouncerAPI(private val pluginContainer: PluginContainer, pr
 
 	override fun createServerManager(stub: BouncerGrpcKt.BouncerCoroutineStub): AbstractServerManager
 	{
-		return SpongeServerManager(this.pluginContainer, stub)
+		return SpongeServerManager(this.pluginContainer, this.userManager, stub)
 	}
 
 	override fun onShutdownSignal()

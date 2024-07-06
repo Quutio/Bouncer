@@ -10,7 +10,7 @@ import com.velocitypowered.api.proxy.server.RegisteredServer
 import com.velocitypowered.api.proxy.server.ServerInfo
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
-import io.quut.bouncer.api.server.BouncerServerInfo
+import io.quut.bouncer.api.server.IBouncerServerInfo
 import io.quut.bouncer.grpc.BouncerGrpcKt
 import io.quut.bouncer.grpc.BouncerListenRequestKt.server
 import io.quut.bouncer.grpc.BouncerListenResponse
@@ -31,8 +31,8 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 {
 	private lateinit var bouncer: VelocityBouncerAPI
 
-	internal val serversByName: MutableMap<String, BouncerServerInfo> = mutableMapOf()
-	internal val serversById: MutableMap<Int, Pair<BouncerServerInfo, RegisteredServer>> = mutableMapOf()
+	internal val serversByName: MutableMap<String, IBouncerServerInfo> = mutableMapOf()
+	internal val serversById: MutableMap<Int, Pair<IBouncerServerInfo, RegisteredServer>> = mutableMapOf()
 
 	private val bouncerAddress: String = System.getenv("BOUNCER_ADDRESS") ?: "localhost:5000"
 
@@ -104,7 +104,7 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 				val registeredServer: RegisteredServer = this@VelocityBouncerPlugin.proxy.registerServer(ServerInfo(serverData.name, address))
 
 				println("Add server ${response.serverId} (${serverData.host}:${serverData.port})")
-				val info = BouncerServerInfo(serverData.name, serverData.group, serverData.type, address)
+				val info = IBouncerServerInfo.of(serverData.name, serverData.group, serverData.type, address)
 
 				this@VelocityBouncerPlugin.serversById[response.serverId] = Pair(info, registeredServer)
 				this@VelocityBouncerPlugin.serversByName[serverData.name] = info
@@ -113,7 +113,7 @@ class VelocityBouncerPlugin @Inject constructor(val proxy: ProxyServer)
 			BouncerListenResponse.Server.UpdateCase.REMOVE ->
 			{
 				println("Remove server ${response.serverId}")
-				val server: BouncerServerInfo =
+				val server: IBouncerServerInfo =
 					this@VelocityBouncerPlugin.serversById.remove(response.serverId)?.first ?: return
 
 				this@VelocityBouncerPlugin.serversByName.remove(server.name)

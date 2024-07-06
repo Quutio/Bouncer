@@ -1,12 +1,14 @@
 package io.quut.bouncer.common.server
 
-import com.github.benmanes.caffeine.cache.Cache
-import com.github.benmanes.caffeine.cache.Caffeine
 import io.quut.bouncer.api.IBouncerScope
-import io.quut.bouncer.api.server.BouncerServerInfo
+import io.quut.bouncer.api.game.IBouncerGame
+import io.quut.bouncer.api.game.IBouncerGameArea
 import io.quut.bouncer.api.server.IBouncerServer
+import io.quut.bouncer.api.server.IBouncerServerOptions
 import io.quut.bouncer.api.server.IServerManager
+import io.quut.bouncer.common.user.UserManager
 import io.quut.bouncer.grpc.BouncerGrpcKt
+import io.quut.harmony.api.IHarmonyEventListener
 import io.quut.harmony.api.IHarmonyEventManager
 import io.quut.harmony.api.IHarmonyScopeOptions
 import kotlinx.coroutines.CompletableJob
@@ -15,33 +17,27 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.Duration
+import net.kyori.adventure.key.Key
 import java.util.Collections
 import java.util.IdentityHashMap
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-abstract class AbstractServerManager(private val stub: BouncerGrpcKt.BouncerCoroutineStub) : IServerManager
+abstract class AbstractServerManager(internal val userManager: UserManager, private val stub: BouncerGrpcKt.BouncerCoroutineStub) : IServerManager
 {
 	private val startSessionSignal: AtomicReference<CompletableJob> = AtomicReference(Job())
 	private var session: ServerManagerSession = ServerManagerSession(this, this.stub)
 
 	private val servers: MutableSet<AbstractBouncerServer> = Collections.newSetFromMap(IdentityHashMap())
 
+	protected val worlds: MutableMap<Key, IBouncerScope> = hashMapOf()
+
 	private var eventManager: IHarmonyEventManager<IBouncerScope>? = null
 
 	override var defaultServer: IBouncerServer? = null
 
 	@JvmField
-	protected var fallback: IBouncerScope? = null
-
-	private val reservations: Cache<UUID, Reservation> = Caffeine.newBuilder()
-		.expireAfterWrite(Duration.ofMinutes(1))
-		.build()
-
-	private val users: ConcurrentHashMap<UUID, UserData> = ConcurrentHashMap()
+	var fallback: IBouncerScope? = null
 
 	init
 	{
@@ -82,21 +78,34 @@ abstract class AbstractServerManager(private val stub: BouncerGrpcKt.BouncerCoro
 		}
 	}
 
+	internal fun register(game: IBouncerGame, area: IBouncerGameArea)
+	{
+		if (area is IBouncerGameArea.IWorld)
+		{
+			this.worlds[area.worldKey] = game
+		}
+		else if (area is IBouncerGameArea.ICompound)
+		{
+			area.scopes.forEach { area -> this.register(game, area) }
+		}
+	}
+
 	protected fun init()
 	{
 		this.eventManager = this.createEventManager()
 	}
 
 	protected abstract fun createEventManager(): IHarmonyEventManager<IBouncerScope>?
-	protected abstract fun createServer(info: BouncerServerInfo, eventManager: IHarmonyEventManager<IBouncerScope>?): AbstractBouncerServer
+	protected abstract fun createServer(options: IBouncerServerOptions, eventManager: IHarmonyEventManager<IBouncerScope>?): AbstractBouncerServer
 
-	override fun registerServer(info: BouncerServerInfo, harmony: IHarmonyScopeOptions<IBouncerServer>): IBouncerServer
+	override fun registerServer(options: IBouncerServerOptions): IBouncerServer
 	{
-		val server: AbstractBouncerServer = this.createServer(info, this.eventManager) // Register the server async
+		val server: AbstractBouncerServer = this.createServer(options, this.eventManager) // Register the server async
 
 		synchronized(this.startSessionSignal)
 		{
-			this.eventManager?.registerScope(server, harmony)
+			this.eventManager?.registerScope(server, IHarmonyScopeOptions.of(
+				listeners = options.listeners.map { listener -> IHarmonyEventListener.of(listener.plugin, listener.listener, listener.lookup) }.toTypedArray()))
 
 			this.servers.add(server)
 			this.session.registerServer(server)
@@ -138,37 +147,6 @@ abstract class AbstractServerManager(private val stub: BouncerGrpcKt.BouncerCoro
 		this.fallback = scope
 	}
 
-	internal fun createReservation(scope: IBouncerScope, uniqueId: UUID)
-	{
-		this.reservations.put(uniqueId, Reservation(scope))
-	}
-
-	protected fun createUserData(uniqueId: UUID): UserData
-	{
-		val reservation: Reservation? = this.reservations.getIfPresent(uniqueId)
-
-		val userData = UserData(when
-		{
-			reservation != null && reservation.isValid(Duration.ofSeconds(5)) -> reservation.scope
-
-			else -> this.fallback
-		})
-
-		this.users[uniqueId] = userData
-
-		return userData
-	}
-
-	protected fun getUser(uniqueId: UUID): UserData?
-	{
-		return this.users[uniqueId]
-	}
-
-	protected fun userDisconnected(uniqueId: UUID): UserData?
-	{
-		return this.users.remove(uniqueId)
-	}
-
 	internal fun shutdown(intentional: Boolean = false)
 	{
 		synchronized(this.startSessionSignal)
@@ -179,13 +157,4 @@ abstract class AbstractServerManager(private val stub: BouncerGrpcKt.BouncerCoro
 			this.session.shutdown(intentional)
 		}
 	}
-
-	protected class Reservation(val scope: IBouncerScope)
-	{
-		private val reservationTime: Long = System.nanoTime()
-
-		fun isValid(timeout: Duration) = System.nanoTime() - this.reservationTime <= timeout.toNanos()
-	}
-
-	protected class UserData(val scope: IBouncerScope?)
 }

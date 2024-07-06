@@ -34,6 +34,7 @@ allprojects {
 
 	repositories {
 		mavenCentral()
+		mavenLocal()
 
 		val gprUser: String? by project
 		val gprPassword: String? by project

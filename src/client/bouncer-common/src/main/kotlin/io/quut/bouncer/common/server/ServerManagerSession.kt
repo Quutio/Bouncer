@@ -115,7 +115,7 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 			{
 				val game: IBouncerGame = this.gamesByGameId[reserveRequest.gameId] ?: return
 
-				reserveRequest.playersList.forEach { player -> this.serverManager.createReservation(game, toUuid(player)) }
+				reserveRequest.playersList.forEach { player -> this.serverManager.userManager.createReservation(game, toUuid(player)) }
 
 				this.writeAndForget(
 					clientSessionMessage()

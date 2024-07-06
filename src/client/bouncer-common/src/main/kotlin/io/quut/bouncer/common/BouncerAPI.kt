@@ -3,7 +3,7 @@ package io.quut.bouncer.common
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import io.quut.bouncer.api.IBouncerAPI
-import io.quut.bouncer.api.server.BouncerServerInfo
+import io.quut.bouncer.api.server.IBouncerServerInfo
 import io.quut.bouncer.api.server.IServerManager
 import io.quut.bouncer.common.server.AbstractServerManager
 import io.quut.bouncer.grpc.BouncerGrpcKt
@@ -27,17 +27,17 @@ abstract class BouncerAPI(endpoint: String) : IBouncerAPI
 
 	protected abstract fun createServerManager(stub: BouncerGrpcKt.BouncerCoroutineStub): AbstractServerManager
 
-	override fun allServers(): Map<String, BouncerServerInfo>
+	override fun allServers(): Map<String, IBouncerServerInfo>
 	{
 		throw UnsupportedOperationException("Only supported on proxy")
 	}
 
-	override fun serversByGroup(group: String): Map<String, BouncerServerInfo>
+	override fun serversByGroup(group: String): Map<String, IBouncerServerInfo>
 	{
 		throw UnsupportedOperationException("Only supported on proxy")
 	}
 
-	override fun serverByName(name: String): BouncerServerInfo?
+	override fun serverByName(name: String): IBouncerServerInfo?
 	{
 		throw UnsupportedOperationException("Only supported on proxy")
 	}

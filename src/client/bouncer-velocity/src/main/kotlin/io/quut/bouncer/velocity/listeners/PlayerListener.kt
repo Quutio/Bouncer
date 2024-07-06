@@ -12,7 +12,7 @@ import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent
 import com.velocitypowered.api.event.player.ServerConnectedEvent
 import com.velocitypowered.api.proxy.Player
 import com.velocitypowered.api.proxy.server.RegisteredServer
-import io.quut.bouncer.api.server.BouncerServerInfo
+import io.quut.bouncer.api.server.IBouncerServerInfo
 import io.quut.bouncer.grpc.ServerFilterKt.group
 import io.quut.bouncer.grpc.ServerFilterKt.name
 import io.quut.bouncer.grpc.ServerFilterKt.type
@@ -172,7 +172,7 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 		{
 			StatusCase.SUCCESS ->
 			{
-				val server: BouncerServerInfo =
+				val server: IBouncerServerInfo =
 					this@PlayerListener.plugin.serversById[response.success.serverId]?.first ?: return null
 
 				return plugin.proxy.getServer(server.name).orElse(null)

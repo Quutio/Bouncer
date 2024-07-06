@@ -4,19 +4,20 @@ import com.google.protobuf.ByteString
 import io.quut.bouncer.api.IBouncerScope
 import io.quut.bouncer.api.game.IBouncerGame
 import io.quut.bouncer.api.game.IBouncerGameOptions
-import io.quut.bouncer.api.server.BouncerServerInfo
 import io.quut.bouncer.api.server.IBouncerServer
+import io.quut.bouncer.api.server.IBouncerServerInfo
 import io.quut.bouncer.common.extensions.toByteArray
 import io.quut.bouncer.common.game.AbstractBouncerGame
 import io.quut.bouncer.common.network.RegisteredBouncerScope
 import io.quut.bouncer.grpc.ClientSessionMessageKt.serverUpdateRequest
 import io.quut.bouncer.grpc.ServerStatusUpdate
 import io.quut.bouncer.grpc.serverStatusUpdate
+import io.quut.harmony.api.IHarmonyEventListener
 import io.quut.harmony.api.IHarmonyEventManager
 import io.quut.harmony.api.IHarmonyScopeOptions
 import java.util.UUID
 
-abstract class AbstractBouncerServer(private val eventManager: IHarmonyEventManager<IBouncerScope>?, internal val info: BouncerServerInfo)
+abstract class AbstractBouncerServer(private val serverManager: AbstractServerManager, private val eventManager: IHarmonyEventManager<IBouncerScope>?, internal val info: IBouncerServerInfo)
 	: RegisteredBouncerScope(), IBouncerServer
 {
 	private val players: MutableSet<UUID> = hashSetOf()
@@ -136,13 +137,22 @@ abstract class AbstractBouncerServer(private val eventManager: IHarmonyEventMana
 
 	protected abstract fun createGame(options: IBouncerGameOptions): AbstractBouncerGame
 
-	override fun registerGame(options: IBouncerGameOptions, harmony: IHarmonyScopeOptions<IBouncerGame>): IBouncerGame
+	override fun registerGame(options: IBouncerGameOptions): IBouncerGame
 	{
 		val game: AbstractBouncerGame = this.createGame(options)
 
+		if (options.stages.isNotEmpty())
+		{
+			game.switchStage(options.stages.first())
+		}
+
+		this.serverManager.register(game, options.area)
+
 		synchronized(this.mutex)
 		{
-			this.eventManager?.registerScope(game, harmony)
+			this.eventManager?.registerScope(game, IHarmonyScopeOptions.of(
+				child = game.eventManager,
+				listeners = options.listeners.map { listener -> IHarmonyEventListener.of(listener.plugin, listener.listener, listener.lookup) }.toTypedArray()))
 
 			this.games.add(game)
 

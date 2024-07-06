@@ -1,7 +1,7 @@
 package io.quut.bouncer.velocity.server
 
 import io.quut.bouncer.api.IBouncerScope
-import io.quut.bouncer.api.server.BouncerServerInfo
+import io.quut.bouncer.api.server.IBouncerServerOptions
 import io.quut.bouncer.common.server.AbstractBouncerServer
 import io.quut.bouncer.common.server.AbstractServerManager
 import io.quut.bouncer.grpc.BouncerGrpcKt
@@ -14,7 +14,7 @@ class VelocityServerManager(stub: BouncerGrpcKt.BouncerCoroutineStub) : Abstract
 		return null
 	}
 
-	override fun createServer(info: BouncerServerInfo, eventManager: IHarmonyEventManager<IBouncerScope>?): AbstractBouncerServer
+	override fun createServer(info: IBouncerServerOptions, eventManager: IHarmonyEventManager<IBouncerScope>?): AbstractBouncerServer
 	{
 		TODO("Not yet implemented")
 	}

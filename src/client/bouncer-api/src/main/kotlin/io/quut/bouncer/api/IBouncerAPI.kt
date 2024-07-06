@@ -1,15 +1,15 @@
 package io.quut.bouncer.api
 
-import io.quut.bouncer.api.server.BouncerServerInfo
+import io.quut.bouncer.api.server.IBouncerServerInfo
 import io.quut.bouncer.api.server.IServerManager
 
 interface IBouncerAPI
 {
 	val serverManager: IServerManager
 
-	fun allServers(): Map<String, BouncerServerInfo>
-	fun serversByGroup(group: String): Map<String, BouncerServerInfo>
-	fun serverByName(name: String): BouncerServerInfo?
+	fun allServers(): Map<String, IBouncerServerInfo>
+	fun serversByGroup(group: String): Map<String, IBouncerServerInfo>
+	fun serverByName(name: String): IBouncerServerInfo?
 
 	fun shutdownGracefully()
 	fun shutdownNow()
@@ -20,11 +20,11 @@ interface IBouncerAPI
 
 		@JvmStatic
 		val api: IBouncerAPI
-			get() = instance
+			get() = this.instance
 
 		fun setApi(instance: IBouncerAPI)
 		{
-			Companion.instance = instance
+			this.instance = instance
 		}
 	}
 }

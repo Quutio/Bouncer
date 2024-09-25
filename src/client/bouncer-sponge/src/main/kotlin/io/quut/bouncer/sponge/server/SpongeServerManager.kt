@@ -2,18 +2,18 @@ package io.quut.bouncer.sponge.server
 
 import io.quut.bouncer.api.IBouncerScope
 import io.quut.bouncer.api.server.IBouncerServerOptions
+import io.quut.bouncer.common.network.NetworkManager
 import io.quut.bouncer.common.server.AbstractBouncerServer
 import io.quut.bouncer.common.server.AbstractServerManager
 import io.quut.bouncer.common.user.UserManager
-import io.quut.bouncer.grpc.BouncerGrpcKt
 import io.quut.harmony.api.IHarmonyEventManager
 import io.quut.harmony.api.IHarmonyEventManager.IBuilder.Companion.mapping
 import org.spongepowered.api.event.block.ChangeBlockEvent
 import org.spongepowered.api.event.network.ServerSideConnectionEvent
 import org.spongepowered.plugin.PluginContainer
 
-class SpongeServerManager(private val pluginContainer: PluginContainer, private val userManager: UserManager, stub: BouncerGrpcKt.BouncerCoroutineStub)
-	: AbstractServerManager(userManager, stub)
+class SpongeServerManager(private val pluginContainer: PluginContainer, networkManager: NetworkManager, userManager: UserManager)
+	: AbstractServerManager(networkManager, userManager)
 {
 	init
 	{

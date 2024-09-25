@@ -1,30 +1,43 @@
 package io.quut.bouncer.api
 
 import io.quut.bouncer.api.server.IBouncerServerInfo
-import io.quut.bouncer.api.server.IServerManager
 
 interface IBouncerAPI
 {
-	val serverManager: IServerManager
+	@Deprecated("Only works on the proxy, replacement wip.")
+	fun allServers(): Map<String, IBouncerServerInfo> = throw UnsupportedOperationException("Only supported on proxy")
 
-	fun allServers(): Map<String, IBouncerServerInfo>
-	fun serversByGroup(group: String): Map<String, IBouncerServerInfo>
-	fun serverByName(name: String): IBouncerServerInfo?
+	@Deprecated("Only works on the proxy, replacement wip.")
+	fun serversByGroup(group: String): Map<String, IBouncerServerInfo> = throw UnsupportedOperationException("Only supported on proxy")
 
-	fun shutdownGracefully()
-	fun shutdownNow()
+	@Deprecated("Only works on the proxy, replacement wip.")
+	fun serverByName(name: String): IBouncerServerInfo? = throw UnsupportedOperationException("Only supported on proxy")
 
 	companion object
 	{
-		private lateinit var instance: IBouncerAPI
+		private var instance: IBouncer? = null
 
 		@JvmStatic
-		val api: IBouncerAPI
-			get() = this.instance
+		fun get(): IBouncer = this.instance ?: throw IllegalStateException("Bouncer is not initialized")
 
-		fun setApi(instance: IBouncerAPI)
+		fun register(instance: IBouncer)
 		{
+			if (this.instance != null)
+			{
+				throw IllegalStateException("Already registered")
+			}
+
 			this.instance = instance
+		}
+
+		fun unregister(instance: IBouncer)
+		{
+			if (this.instance != instance)
+			{
+				throw IllegalArgumentException("Mismatched instance")
+			}
+
+			this.instance = null
 		}
 	}
 }

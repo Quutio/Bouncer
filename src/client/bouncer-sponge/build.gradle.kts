@@ -19,15 +19,15 @@ dependencies {
 }
 
 sponge {
-	apiVersion("11.0.0-SNAPSHOT")
+	apiVersion("12.0.0-SNAPSHOT")
 	license("MIT")
 	loader {
 		name(PluginLoaders.JAVA_PLAIN)
 		version("1.0")
 	}
 	plugin("bouncer") {
+		entrypoint("io.quut.bouncer.sponge.SpongeBouncerPluginLoader")
 		displayName("Bouncer")
-		entrypoint("io.quut.bouncer.sponge.SpongeBouncerPlugin")
 		description("A load balancer for Minecraft servers")
 		links {
 			homepage("https://github.com/Quutio/Bouncer")

@@ -8,7 +8,7 @@ import org.spongepowered.api.event.Order
 import org.spongepowered.api.event.network.ServerSideConnectionEvent
 import java.util.UUID
 
-internal class ConnectionListener(private val userManager: UserManager, val serverManager: AbstractServerManager)
+internal class ConnectionListener(private val userManager: UserManager, private val serverManager: AbstractServerManager)
 {
 	@Listener(order = Order.PRE)
 	private fun onAuth(event: ServerSideConnectionEvent.Auth)

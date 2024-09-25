@@ -8,7 +8,7 @@ import com.velocitypowered.api.proxy.Player
 import io.quut.bouncer.grpc.BouncerGrpcKt
 import io.quut.bouncer.grpc.JoinGameResponse
 import io.quut.bouncer.grpc.joinGameRequest
-import io.quut.bouncer.velocity.VelocityBouncerPlugin
+import io.quut.bouncer.velocity.VelocityBouncerPluginLoader
 import io.quut.bouncer.velocity.extensions.toByteArray
 import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component
@@ -16,7 +16,7 @@ import net.kyori.adventure.text.format.NamedTextColor
 
 object PlayCommand
 {
-	fun createPlayCommand(plugin: VelocityBouncerPlugin, stub: BouncerGrpcKt.BouncerCoroutineStub): BrigadierCommand
+	fun createPlayCommand(plugin: VelocityBouncerPluginLoader, stub: BouncerGrpcKt.BouncerCoroutineStub): BrigadierCommand
 	{
 		return BrigadierCommand(
 			BrigadierCommand.literalArgumentBuilder("play")

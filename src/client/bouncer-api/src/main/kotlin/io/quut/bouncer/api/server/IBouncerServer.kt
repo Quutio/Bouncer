@@ -10,7 +10,7 @@ interface IBouncerServer : IBouncerScope
 	fun confirmJoin(uniqueId: UUID)
 	fun confirmLeave(uniqueId: UUID)
 
-	fun heartbeat(tps: Int? = null, memory: Int? = null)
+	fun heartbeat(heartbeat: IServerHeartbeat)
 
 	fun registerGame(options: IBouncerGameOptions): IBouncerGame
 	fun unregisterGame(game: IBouncerGame)

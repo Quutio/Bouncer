@@ -6,6 +6,7 @@ import io.quut.bouncer.api.game.IBouncerGame
 import io.quut.bouncer.api.game.IBouncerGameOptions
 import io.quut.bouncer.api.server.IBouncerServer
 import io.quut.bouncer.api.server.IBouncerServerInfo
+import io.quut.bouncer.api.server.IServerHeartbeat
 import io.quut.bouncer.common.extensions.toByteArray
 import io.quut.bouncer.common.game.AbstractBouncerGame
 import io.quut.bouncer.common.network.RegisteredBouncerScope
@@ -84,20 +85,13 @@ abstract class AbstractBouncerServer(private val serverManager: AbstractServerMa
 	override fun confirmJoin(uniqueId: UUID) = this.updateTransaction(uniqueId, true)
 	override fun confirmLeave(uniqueId: UUID) = this.updateTransaction(uniqueId, false)
 
-	override fun heartbeat(tps: Int?, memory: Int?)
+	override fun heartbeat(heartbeat: IServerHeartbeat)
 	{
 		this.sendUpdate(
 			serverStatusUpdate()
 			{
-				if (tps != null)
-				{
-					this.tps = tps
-				}
-
-				if (memory != null)
-				{
-					this.memory = memory
-				}
+				heartbeat.tps?.let { tps -> this.tps = (tps * 100).toInt() }
+				heartbeat.memory?.let { memory -> this.memory = memory}
 			}
 		)
 	}

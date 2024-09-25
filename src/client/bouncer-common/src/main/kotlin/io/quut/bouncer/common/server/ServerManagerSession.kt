@@ -6,6 +6,7 @@ import io.quut.bouncer.common.extensions.toByteArray
 import io.quut.bouncer.common.extensions.toUuid
 import io.quut.bouncer.common.game.AbstractBouncerGame
 import io.quut.bouncer.common.network.BiDirectionalSession
+import io.quut.bouncer.common.network.NetworkManager
 import io.quut.bouncer.common.network.RegisteredBouncerScope
 import io.quut.bouncer.grpc.BouncerGrpcKt
 import io.quut.bouncer.grpc.ClientSessionMessage
@@ -39,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class ServerManagerSession(private val serverManager: AbstractServerManager, private val stub: BouncerGrpcKt.BouncerCoroutineStub)
+internal class ServerManagerSession(private val serverManager: AbstractServerManager, private val networkManager: NetworkManager)
 	: BiDirectionalSession<ClientSessionMessage, ClientSessionMessage.Builder, ServerSessionMessage>()
 {
 	private val nextServerTrackingId: AtomicInteger = AtomicInteger()
@@ -50,10 +51,14 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 
 	private var pingTask: Job? = null
 
+	private lateinit var stub: BouncerGrpcKt.BouncerCoroutineStub
+
 	internal suspend fun startAsync()
 	{
 		try
 		{
+			this.stub = this.networkManager.stub
+
 			super.startAsync(this.stub::session)
 		}
 		finally

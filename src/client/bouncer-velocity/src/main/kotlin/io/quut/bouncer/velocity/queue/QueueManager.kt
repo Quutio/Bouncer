@@ -42,7 +42,8 @@ class QueueManager(private val stub: BouncerGrpcKt.BouncerCoroutineStub, private
 		{
 			while (true)
 			{
-				kotlin.runCatching {
+				kotlin.runCatching()
+				{
 					this@QueueManager.stub.gameQueue(this@QueueManager.requestChannel.receiveAsFlow())
 						.cancellable()
 						.collect(this@QueueManager::handleResponse)

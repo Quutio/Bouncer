@@ -6,8 +6,8 @@ import io.quut.bouncer.api.game.IBouncerGameArea
 import io.quut.bouncer.api.server.IBouncerServer
 import io.quut.bouncer.api.server.IBouncerServerOptions
 import io.quut.bouncer.api.server.IServerManager
+import io.quut.bouncer.common.network.NetworkManager
 import io.quut.bouncer.common.user.UserManager
-import io.quut.bouncer.grpc.BouncerGrpcKt
 import io.quut.harmony.api.IHarmonyEventListener
 import io.quut.harmony.api.IHarmonyEventManager
 import io.quut.harmony.api.IHarmonyScopeOptions
@@ -23,10 +23,10 @@ import java.util.IdentityHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-abstract class AbstractServerManager(internal val userManager: UserManager, private val stub: BouncerGrpcKt.BouncerCoroutineStub) : IServerManager
+abstract class AbstractServerManager(private val networkManager: NetworkManager, val userManager: UserManager) : IServerManager
 {
 	private val startSessionSignal: AtomicReference<CompletableJob> = AtomicReference(Job())
-	private var session: ServerManagerSession = ServerManagerSession(this, this.stub)
+	private var session: ServerManagerSession = ServerManagerSession(this, this.networkManager)
 
 	private val servers: MutableSet<AbstractBouncerServer> = Collections.newSetFromMap(IdentityHashMap())
 
@@ -62,7 +62,7 @@ abstract class AbstractServerManager(internal val userManager: UserManager, priv
 					synchronized(this@AbstractServerManager.startSessionSignal)
 					{
 						this@AbstractServerManager.session.shutdown()
-						this@AbstractServerManager.session = ServerManagerSession(this@AbstractServerManager, this@AbstractServerManager.stub)
+						this@AbstractServerManager.session = ServerManagerSession(this@AbstractServerManager, this@AbstractServerManager.networkManager)
 
 						this@AbstractServerManager.servers.forEach()
 						{ server ->
@@ -151,6 +151,9 @@ abstract class AbstractServerManager(internal val userManager: UserManager, priv
 	{
 		synchronized(this.startSessionSignal)
 		{
+			this.fallback = null
+			this.defaultServer = null
+
 			this.startSessionSignal.getAndSet(Job())
 			this.servers.clear()
 

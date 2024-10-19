@@ -2,20 +2,24 @@ syntax = "proto3";
 
 package quutio.bouncer;
 
-import "listen.proto";
+import "queue.proto";
 import "servers.proto";
 import "session.proto";
+import "watch.proto";
 
 option csharp_namespace = "Bouncer.Grpc";
 option java_package = "io.quut.bouncer.grpc";
 option java_multiple_files = true;
 
 service Bouncer {
-	rpc Session(stream BouncerSessionRequest) returns (stream BouncerSessionResponse);
-	rpc Listen(BouncerListenRequest) returns (stream BouncerListenResponse);
+	rpc Session(stream ClientSessionMessage) returns (stream ServerSessionMessage);
+	rpc Watch(BouncerWatchRequest) returns (stream BouncerWatchResponse);
 
 	rpc ListServers(ServerListRequest) returns (ServerListResponse);
 	rpc JoinServer(ServerJoinRequest) returns (ServerJoinResponse);
+
+	rpc JoinUniverse(JoinUniverseRequest) returns (JoinUniverseResponse);
+	rpc UniverseQueue(stream UniverseQueueRequest) returns (stream UniverseQueueResponse);
 }
 
 message ServerListRequest {
@@ -40,6 +44,27 @@ message ServerJoinResponse {
 
 	message Success {
 		int32 serverId = 1;
+	}
+
+	message NoServers {
+	}
+}
+
+message JoinUniverseRequest {
+	string universeType = 1;
+	repeated bytes players = 2;
+}
+
+message JoinUniverseResponse {
+	oneof status {
+		Success success = 1;
+		NoServers noServers = 2;
+	}
+
+	message Success {
+		int32 serverId = 1;
+		int32 universeId = 2;
+		int32 reservationId = 3;
 	}
 
 	message NoServers {

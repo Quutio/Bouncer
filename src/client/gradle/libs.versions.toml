@@ -1,10 +1,14 @@
 [versions]
-kotlin = "1.9.22"
-kotlinx = "1.8.0"
-ptotobuf = "3.25.3"
-grpc-protobuf = "1.62.2"
+kotlin = "2.0.0"
+kotlinx = "1.8.1"
+ptotobuf = "4.27.0"
+grpc-protobuf = "1.64.0"
 grpc-kotlin = "1.4.1"
 velocity = "3.3.0-SNAPSHOT"
+shadow = "8.1.7"
+adventure = "4.17.0"
+harmony = "1.2.2"
+caffeine = "3.1.8"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin" }
@@ -16,13 +20,16 @@ grpc-protobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc-protobuf
 grpc-netty = { module = "io.grpc:grpc-netty", version.ref = "grpc-protobuf" }
 grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
 grpc-kotlin-plugin = { module = "io.grpc:protoc-gen-grpc-kotlin", version.ref = "grpc-kotlin" }
-
 velocity = { module = "com.velocitypowered:velocity-api", version.ref = "velocity" }
+adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
+harmony-api = { module = "io.quut:harmony-api", version.ref = "harmony" }
+harmony-sponge = { module = "io.quut:harmony-sponge", version.ref = "harmony" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 protobuf = { id = "com.google.protobuf", version = "0.9.4" }
-shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
+shadow = { id = "io.github.goooler.shadow", version.ref = "shadow" }
 spotless = { id = "com.diffplug.spotless", version = "6.25.0" }
-sponge = { id = "org.spongepowered.gradle.plugin", version = "2.0.0" }
+sponge = { id = "org.spongepowered.gradle.plugin", version = "2.2.1-SNAPSHOT" }

@@ -21,7 +21,9 @@ dependencies {
 	api(libs.grpc.protobuf)
 	api(libs.grpc.kotlin.stub)
 
-	runtimeOnly(libs.grpc.netty)
+	runtimeOnly(libs.grpc.netty) {
+		exclude("com.google.android")
+	}
 }
 
 protobuf {
@@ -47,4 +49,8 @@ protobuf {
 			}
 		}
 	}
+}
+
+tasks.withType<Jar> {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

@@ -12,7 +12,7 @@ import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent
 import com.velocitypowered.api.event.player.ServerConnectedEvent
 import com.velocitypowered.api.proxy.Player
 import com.velocitypowered.api.proxy.server.RegisteredServer
-import io.quut.bouncer.api.server.BouncerServerInfo
+import io.quut.bouncer.common.network.NetworkManager
 import io.quut.bouncer.grpc.ServerFilterKt.group
 import io.quut.bouncer.grpc.ServerFilterKt.name
 import io.quut.bouncer.grpc.ServerFilterKt.type
@@ -23,15 +23,15 @@ import io.quut.bouncer.grpc.ServerSort.ByPlayerCount
 import io.quut.bouncer.grpc.ServerSortKt.byPlayerCount
 import io.quut.bouncer.grpc.serverFilter
 import io.quut.bouncer.grpc.serverSort
-import io.quut.bouncer.velocity.VelocityBouncerPlugin
 import io.quut.bouncer.velocity.extensions.eventTask
 import io.quut.bouncer.velocity.extensions.toByteArray
+import io.quut.bouncer.velocity.server.DynamicServerEventHandler
 import kotlinx.coroutines.time.delay
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
+internal class PlayerListener(private val networkManager: NetworkManager, private val dynamicServers: DynamicServerEventHandler)
 {
 	private val cache: Cache<UUID, ConnectionFailure> = CacheBuilder.newBuilder()
 		.expireAfterWrite(5, TimeUnit.MINUTES)
@@ -167,18 +167,11 @@ internal class PlayerListener(private val plugin: VelocityBouncerPlugin)
 			)
 		}
 
-		val response: ServerJoinResponse = this.plugin.stub.joinServer(builder.build())
-		when (response.statusCase)
+		val response: ServerJoinResponse = this.networkManager.stub.joinServer(builder.build())
+		return when (response.statusCase)
 		{
-			StatusCase.SUCCESS ->
-			{
-				val server: BouncerServerInfo =
-					this@PlayerListener.plugin.serversById[response.success.serverId] ?: return null
-
-				return plugin.proxy.getServer(server.name).orElse(null)
-			}
-
-			else -> return null
+			StatusCase.SUCCESS -> this.dynamicServers[response.success.serverId]
+			else -> null
 		}
 	}
 

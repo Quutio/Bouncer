@@ -3,7 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 using Bouncer.Grpc;
 using Bouncer.Server.Logging;
 using Bouncer.Server.Server.Filter;
-using Bouncer.Server.Server.Listener;
+using Bouncer.Server.Server.Watch;
+using Bouncer.Server.Session;
 using Google.Protobuf;
 
 namespace Bouncer.Server.Server;
@@ -16,7 +17,7 @@ internal sealed class ServerManager
 	private readonly ConcurrentDictionary<uint, RegisteredServer> serversById;
 	private readonly ConcurrentDictionary<string, RegisteredServer> serversByName;
 
-	private readonly List<ServerStatusListener> listeners;
+	private readonly List<ServerWatcher> watchers;
 
 	private uint nextId;
 
@@ -28,16 +29,16 @@ internal sealed class ServerManager
 		this.serversById = new ConcurrentDictionary<uint, RegisteredServer>();
 		this.serversByName = new ConcurrentDictionary<string, RegisteredServer>();
 
-		this.listeners = [];
+		this.watchers = [];
 
 		_ = this.Cleanup();
 	}
 
-	internal RegisteredServer Register(ServerData data, ServerStatus? status)
+	internal RegisteredServer Register(BouncerSession session, ServerData data, ServerStatus? status)
 	{
 		uint id = Interlocked.Increment(ref this.nextId);
 
-		RegisteredServer server = new(this, this.loggerFactory.CreateLogger<RegisteredServer>(), id, data);
+		RegisteredServer server = new(this.loggerFactory.CreateLogger<RegisteredServer>(), this, session, id, data);
 		if (status is not null)
 		{
 			server.Status.Tps = status.Tps;
@@ -78,11 +79,11 @@ internal sealed class ServerManager
 
 		this.logger.ServerRegistered(data.Name, id, this.serversById.Count);
 
-		lock (this.listeners)
+		lock (this.watchers)
 		{
-			foreach (ServerStatusListener listener in this.listeners)
+			foreach (ServerWatcher watcher in this.watchers)
 			{
-				listener.TryAddServer(server);
+				watcher.TryAddServer(server);
 			}
 		}
 
@@ -105,28 +106,28 @@ internal sealed class ServerManager
 		server.UnregisterInternal(unregistration);
 	}
 
-	internal ServerStatusListener CreateServerListener(IServerFilter? filter)
+	internal ServerWatcher CreateServerWatcher(IServerFilter? filter)
 	{
-		ServerStatusListener listener = new(this, filter);
+		ServerWatcher watcher = new(this, filter);
 
-		lock (this.listeners)
+		lock (this.watchers)
 		{
-			this.listeners.Add(listener);
+			this.watchers.Add(watcher);
 		}
 
 		foreach (RegisteredServer server in this.serversById.Values)
 		{
-			listener.TryAddServer(server);
+			watcher.TryAddServer(server);
 		}
 
-		return listener;
+		return watcher;
 	}
 
-	internal void RemoveListener(ServerStatusListener listener)
+	internal void RemoveWatcher(ServerWatcher watcher)
 	{
-		lock (this.listeners)
+		lock (this.watchers)
 		{
-			this.listeners.Remove(listener);
+			this.watchers.Remove(watcher);
 		}
 	}
 

@@ -1,82 +1,61 @@
 package io.quut.bouncer.common.server
 
 import com.google.protobuf.ByteString
-import io.quut.bouncer.api.server.BouncerServerInfo
 import io.quut.bouncer.api.server.IBouncerServer
+import io.quut.bouncer.api.server.IBouncerServerHeartbeat
+import io.quut.bouncer.api.server.IBouncerServerInfo
+import io.quut.bouncer.api.universe.IBouncerUniverse
+import io.quut.bouncer.api.universe.IBouncerUniverseOptions
 import io.quut.bouncer.common.extensions.toByteArray
-import io.quut.bouncer.grpc.BouncerSessionRequestKt.serverUpdate
+import io.quut.bouncer.common.network.RegisteredBouncerScope
+import io.quut.bouncer.common.universe.BouncerUniverse
+import io.quut.bouncer.grpc.ClientSessionMessageKt.serverUpdateRequest
+import io.quut.bouncer.grpc.ServerStatusUpdate
 import io.quut.bouncer.grpc.serverStatusUpdate
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicReference
 
-internal class BouncerServer(internal val info: BouncerServerInfo) : IBouncerServer
+abstract class BouncerServer<TServer, TUniverse>(private val serverManager: AbstractServerManager<TServer, TUniverse>, internal val info: IBouncerServerInfo) : RegisteredBouncerScope(), IBouncerServer
+	where TServer : BouncerServer<TServer, TUniverse>, TUniverse : BouncerUniverse<TServer, TUniverse>
 {
-	private val state: AtomicReference<RegistrationState> = AtomicReference(RegistrationState.NONE)
-	private val players: MutableSet<UUID> = mutableSetOf()
+	private val players: MutableSet<UUID> = hashSetOf()
+	private val universes: MutableSet<TUniverse> = hashSetOf()
 
-	@Volatile
-	private var sessionData: SessionData? = null
+	override val mutex: Any
+		get() = this
 
-	internal val registered
-		get() = this.state.get() == RegistrationState.REGISTERED
-
-	internal fun prepare(session: ServerManagerSession, trackingId: Int, consumer: (Set<UUID>) -> Unit)
+	internal fun prepare(session: ServerManagerSession, trackingId: Int, consumer: (Set<UUID>, Set<TUniverse>) -> Unit)
 	{
-		synchronized(this.players)
-		{
-			consumer(this.players)
-
-			this.sessionData = SessionData(session, trackingId)
-		}
-	}
-
-	internal fun registered(session: ServerManagerSession, id: Int): Boolean
-	{
-		val sessionData: SessionData = synchronized(this.players)
-		{
-			val sessionData: SessionData = this.sessionData ?: return false
-			if (sessionData.session != session)
-			{
-				return false
-			}
-
-			return@synchronized sessionData
-		}
-
-		// If we fail to transition from NONE -> REGISTERING then we are already unregistered
-		if (!this.state.compareAndSet(RegistrationState.NONE, RegistrationState.REGISTERING))
-		{
-			return false
-		}
-
-		sessionData.serverId = id
-
-		// If we successfully transition from REGISTERING -> REGISTERED then we are done
-		if (this.state.compareAndSet(RegistrationState.REGISTERING, RegistrationState.REGISTERED))
-		{
-			return true
-		}
-
-		// If we fail to transition from REGISTERING -> REGISTERED then we were unregistered
-		this.sessionData = null
-
-		return false
-	}
-
-	internal fun lostConnection()
-	{
-		this.state.set(RegistrationState.NONE)
-		this.sessionData = null
-	}
-
-	private fun updateTransaction(uniqueId: UUID, state: Boolean)
-	{
-		if (this.state.get() == RegistrationState.UNREGISTERED)
+		if (!this.valid)
 		{
 			return
 		}
 
-		synchronized(this.players)
+		synchronized(this.mutex)
+		{
+			consumer(this.players, this.universes)
+
+			super.prepare(session, trackingId)
+		}
+	}
+
+	override fun lostConnection()
+	{
+		synchronized(this.mutex)
+		{
+			super.lostConnection()
+
+			this.universes.forEach { universe -> universe.lostConnection() }
+		}
+	}
+
+	private fun updateTransaction(uniqueId: UUID, state: Boolean)
+	{
+		if (!this.valid)
+		{
+			return
+		}
+
+		synchronized(this.mutex)
 		{
 			if (state)
 			{
@@ -102,88 +81,98 @@ internal class BouncerServer(internal val info: BouncerServerInfo) : IBouncerSer
 	override fun confirmJoin(uniqueId: UUID) = this.updateTransaction(uniqueId, true)
 	override fun confirmLeave(uniqueId: UUID) = this.updateTransaction(uniqueId, false)
 
-	override fun heartbeat(tps: Int?, memory: Int?)
+	override fun heartbeat(heartbeat: IBouncerServerHeartbeat)
 	{
-		val sessionData: SessionData = this.sessionData ?: return
-
-		sessionData.session.sendUpdate(
-			serverUpdate()
+		this.sendUpdate(
+			serverStatusUpdate()
 			{
-				this.trackingId = sessionData.trackingId
-				this.status = serverStatusUpdate()
-				{
-					if (tps != null)
-					{
-						this.tps = tps
-					}
-
-					if (memory != null)
-					{
-						this.memory = memory
-					}
-				}
+				heartbeat.tps?.let { tps -> this.tps = (tps * 100).toInt() }
+				heartbeat.memory?.let { memory -> this.memory = memory}
 			}
 		)
 	}
 
 	private fun sendConfirmJoin(uniqueId: UUID)
 	{
-		var sessionData: SessionData = this.sessionData ?: return
-
-		sessionData.session.sendUpdate(
-			serverUpdate()
+		this.sendUpdate(
+			serverStatusUpdate()
 			{
-				this.trackingId = sessionData.trackingId
-				this.status = serverStatusUpdate()
-				{
-					this.playersJoined.add(ByteString.copyFrom(uniqueId.toByteArray()))
-				}
+				this.playersJoined.add(ByteString.copyFrom(uniqueId.toByteArray()))
 			}
 		)
 	}
 
 	private fun sendConfirmLeave(uniqueId: UUID)
 	{
-		val sessionData: SessionData = this.sessionData ?: return
-
-		sessionData.session.sendUpdate(
-			serverUpdate()
+		this.sendUpdate(
+			serverStatusUpdate()
 			{
-				this.trackingId = sessionData.trackingId
-				this.status = serverStatusUpdate()
-				{
-					this.playersLeft.add(ByteString.copyFrom(uniqueId.toByteArray()))
-				}
+				this.playersLeft.add(ByteString.copyFrom(uniqueId.toByteArray()))
 			}
 		)
 	}
 
-	internal fun unregister()
+	private fun sendUpdate(update: ServerStatusUpdate)
 	{
-		val state: RegistrationState = this.state.getAndSet(RegistrationState.UNREGISTERED)
-		if (state != RegistrationState.REGISTERED)
-		{
-			// If we aren't in the REGISTERED state then we shouldn't call unregisterServer.
-			// This could be because we are in the progress of registration which
-			// then correctly handles the cancellation by itself.
-			// Or we could already be in the UNREGISTER state, and we don't need to do anything.
-			return
-		}
-
 		val sessionData: SessionData = this.sessionData ?: return
 
-		this.sessionData = null
-
-		sessionData.session.unregisterServer(this, sessionData.trackingId, sessionData.serverId)
+		sessionData.session.sendUpdate(
+			serverUpdateRequest()
+			{
+				this.trackingId = sessionData.trackingId
+				this.status = update
+			}
+		)
 	}
 
-	private class SessionData(val session: ServerManagerSession, val trackingId: Int, @Volatile var serverId: Int = 0)
+	protected abstract fun createUniverse(options: IBouncerUniverseOptions): TUniverse
 
-	private enum class RegistrationState
+	override fun registerUniverse(options: IBouncerUniverseOptions): IBouncerUniverse
 	{
-		NONE,
-		REGISTERING,
-		REGISTERED,
-		UNREGISTERED
+		val universe: TUniverse = this.createUniverse(options)
+		universe.init()
+
+		this.serverManager.register(universe, options.area)
+
+		synchronized(this.mutex)
+		{
+			this.registerUniverse(options, universe)
+
+			this.universes.add(universe)
+
+			this.sessionData?.let()
+			{ sessionData ->
+				sessionData.session.registerUniverse(universe, sessionData)
+			}
+		}
+
+		return universe
+	}
+
+	protected open fun registerUniverse(options: IBouncerUniverseOptions, universe: TUniverse)
+	{
+	}
+
+	override fun unregisterUniverse(universe: IBouncerUniverse)
+	{
+		this.unregisterUniverse(universe as BouncerUniverse<*, *>)
+	}
+
+	private fun unregisterUniverse(universe: BouncerUniverse<*, *>)
+	{
+		synchronized(this.mutex)
+		{
+			if (!this.universes.remove(universe))
+			{
+				return
+			}
+
+			universe.unregister()
+		}
+	}
+
+	override fun onUnregistered(sessionData: SessionData)
+	{
+		sessionData.session.unregisterServer(this, sessionData)
 	}
 }

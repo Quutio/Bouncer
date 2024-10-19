@@ -1,30 +1,32 @@
 package io.quut.bouncer.api
 
-import io.quut.bouncer.api.server.BouncerServerInfo
-import io.quut.bouncer.api.server.IServerManager
-
 interface IBouncerAPI
 {
-	val serverManager: IServerManager
-
-	fun allServers(): Map<String, BouncerServerInfo>
-	fun serversByGroup(group: String): Map<String, BouncerServerInfo>
-	fun serverByName(name: String): BouncerServerInfo?
-
-	fun shutdownGracefully()
-	fun shutdownNow()
-
 	companion object
 	{
-		private lateinit var instance: IBouncerAPI
+		private var instance: IBouncer? = null
 
 		@JvmStatic
-		val api: IBouncerAPI
-			get() = instance
+		fun get(): IBouncer = this.instance ?: throw IllegalStateException("Bouncer is not initialized")
 
-		fun setApi(instance: IBouncerAPI)
+		fun register(instance: IBouncer)
 		{
-			Companion.instance = instance
+			if (this.instance != null)
+			{
+				throw IllegalStateException("Already registered")
+			}
+
+			this.instance = instance
+		}
+
+		fun unregister(instance: IBouncer)
+		{
+			if (this.instance != instance)
+			{
+				throw IllegalArgumentException("Mismatched instance")
+			}
+
+			this.instance = null
 		}
 	}
 }

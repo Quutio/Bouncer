@@ -7,4 +7,4 @@ api-version: 1.13
 author: Joni Aromaa (isokissa3)
 website: https://quut.io
 
-main: io.quut.bouncer.bukkit.BukkitBouncerPlugin
+main: io.quut.bouncer.bukkit.BukkitBouncerPluginLoader

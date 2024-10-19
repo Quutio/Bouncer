@@ -1,4 +1,11 @@
 pluginManagement {
+	repositories {
+		gradlePluginPortal()
+		maven {
+			name = "sponge"
+			url = uri("https://repo.spongepowered.org/repository/maven-public/")
+		}
+	}
 	plugins {
 		id("com.diffplug.spotless") version "6.25.0"
 	}

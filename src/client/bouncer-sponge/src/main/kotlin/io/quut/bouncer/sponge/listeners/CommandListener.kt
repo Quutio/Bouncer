@@ -1,11 +1,12 @@
 package io.quut.bouncer.sponge.listeners
 
-import io.quut.bouncer.api.IBouncerAPI
+import com.google.inject.Inject
+import io.quut.bouncer.sponge.SpongeBouncerPlugin
 import org.spongepowered.api.event.Listener
 import org.spongepowered.api.event.Order
 import org.spongepowered.api.event.command.ExecuteCommandEvent
 
-internal class CommandListener(private val bouncer: IBouncerAPI)
+internal class CommandListener @Inject constructor(private val bouncer: SpongeBouncerPlugin) : IBouncerListener
 {
 	@Listener(order = Order.POST)
 	private fun onExecuteCommandEvent(event: ExecuteCommandEvent.Pre)

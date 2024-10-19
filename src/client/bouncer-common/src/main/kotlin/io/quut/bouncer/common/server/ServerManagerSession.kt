@@ -1,28 +1,36 @@
 package io.quut.bouncer.common.server
 
 import com.google.protobuf.ByteString
+import io.quut.bouncer.api.universe.IBouncerUniverse
 import io.quut.bouncer.common.extensions.toByteArray
+import io.quut.bouncer.common.extensions.toUuid
+import io.quut.bouncer.common.network.BiDirectionalSession
+import io.quut.bouncer.common.network.NetworkManager
+import io.quut.bouncer.common.network.RegisteredBouncerScope
+import io.quut.bouncer.common.universe.BouncerUniverse
 import io.quut.bouncer.grpc.BouncerGrpcKt
-import io.quut.bouncer.grpc.BouncerSessionRequest
-import io.quut.bouncer.grpc.BouncerSessionRequestKt.close
-import io.quut.bouncer.grpc.BouncerSessionRequestKt.ping
-import io.quut.bouncer.grpc.BouncerSessionRequestKt.serverRegistration
-import io.quut.bouncer.grpc.BouncerSessionRequestKt.serverUnregistration
-import io.quut.bouncer.grpc.BouncerSessionResponse
-import io.quut.bouncer.grpc.bouncerSessionRequest
+import io.quut.bouncer.grpc.ClientSessionMessage
+import io.quut.bouncer.grpc.ClientSessionMessageKt.ReserveResponseKt.success
+import io.quut.bouncer.grpc.ClientSessionMessageKt.closeRequest
+import io.quut.bouncer.grpc.ClientSessionMessageKt.pingRequest
+import io.quut.bouncer.grpc.ClientSessionMessageKt.reserveResponse
+import io.quut.bouncer.grpc.ClientSessionMessageKt.serverRegistrationRequest
+import io.quut.bouncer.grpc.ClientSessionMessageKt.serverUnregistrationRequest
+import io.quut.bouncer.grpc.ClientSessionMessageKt.universeRegistration
+import io.quut.bouncer.grpc.ClientSessionMessageKt.universeRegistrationRequest
+import io.quut.bouncer.grpc.ClientSessionMessageKt.universeUnregistrationRequest
+import io.quut.bouncer.grpc.ServerSessionMessage
+import io.quut.bouncer.grpc.clientSessionMessage
 import io.quut.bouncer.grpc.playerList
 import io.quut.bouncer.grpc.serverData
 import io.quut.bouncer.grpc.serverStatus
-import kotlinx.coroutines.CompletableDeferred
+import io.quut.bouncer.grpc.universeData
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ChannelResult
-import kotlinx.coroutines.flow.cancellable
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.time.delay
@@ -31,101 +39,125 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class ServerManagerSession(private val stub: BouncerGrpcKt.BouncerCoroutineStub)
+internal class ServerManagerSession(private val serverManager: AbstractServerManager<*, *>, private val networkManager: NetworkManager)
+	: BiDirectionalSession<ClientSessionMessage, ClientSessionMessage.Builder, ServerSessionMessage>()
 {
-	private val requestChannel: Channel<BouncerSessionRequest> = Channel(capacity = Channel.UNLIMITED)
+	private val nextServerTrackingId: AtomicInteger = AtomicInteger()
+	private val nextUniverseTrackingId: AtomicInteger = AtomicInteger()
+	private val nextReservationId: AtomicInteger = AtomicInteger()
 
-	private val nextRequestId: AtomicInteger = AtomicInteger()
-	private val requestResponses: ConcurrentMap<Int, CompletableDeferred<*>> = ConcurrentHashMap()
-
-	private val nextTrackingId: AtomicInteger = AtomicInteger()
-	private val serversByServerId: ConcurrentMap<Int, BouncerServer> = ConcurrentHashMap()
+	private val serversByServerId: ConcurrentMap<Int, BouncerServer<*, *>> = ConcurrentHashMap()
+	private val universesByUniverseId: ConcurrentMap<Int, BouncerUniverse<*, *>> = ConcurrentHashMap()
 
 	private var pingTask: Job? = null
 
-	internal suspend fun start()
-	{
-		this@ServerManagerSession.stub.session(this@ServerManagerSession.requestChannel.receiveAsFlow())
-			.cancellable()
-			.collect(this::handleResponse)
+	private lateinit var stub: BouncerGrpcKt.BouncerCoroutineStub
 
-		this.pingTask?.cancel()
-		this.pingTask = null
+	internal suspend fun startAsync()
+	{
+		try
+		{
+			this.stub = this.networkManager.stub
+
+			super.startAsync(this.stub::session)
+		}
+		finally
+		{
+			this.pingTask?.cancel()
+			this.pingTask = null
+		}
 	}
 
-	@Suppress("UNCHECKED_CAST")
-	private fun handleResponse(response: BouncerSessionResponse)
+	override fun handle(message: ServerSessionMessage)
 	{
-		if (response.responseCase == BouncerSessionResponse.ResponseCase.SETTINGS)
+		when (message.messageCase)
 		{
-			return this.setSettings(response.settings)
-		}
-
-		val callback: CompletableDeferred<*> = this@ServerManagerSession.requestResponses.remove(response.requestId) ?: return
-		when (response.responseCase)
-		{
-			BouncerSessionResponse.ResponseCase.SERVERREGISTRATION ->
-				(callback as CompletableDeferred<BouncerSessionResponse.ServerRegistration>).complete(response.serverRegistration)
+			ServerSessionMessage.MessageCase.SETTINGSRESPONSE -> this.setSettings(message.settingsResponse)
+			ServerSessionMessage.MessageCase.RESERVEREQUEST -> this.reserveRequest(message.messageId, message.reserveRequest)
+			ServerSessionMessage.MessageCase.REGISTERSERVERRESPONSE -> this.handleCallback(message.messageId, message.registerServerResponse)
+			ServerSessionMessage.MessageCase.REGISTERUNIVERSERESPONSE -> this.handleCallback(message.messageId, message.registerUniverseResponse)
 
 			else -> Unit
 		}
 	}
 
-	private fun setSettings(settings: BouncerSessionResponse.Settings)
+	private fun setSettings(settings: ServerSessionMessage.SettingsResponse)
 	{
 		this.pingTask?.cancel()
 
 		@OptIn(DelicateCoroutinesApi::class) // Background task
 		this.pingTask = GlobalScope.launch()
 		{
-			while (this.isActive)
-			{
-				val result: ChannelResult<Unit> = this@ServerManagerSession.requestChannel.trySend(
-					bouncerSessionRequest()
-					{
-						ping = ping {}
-					}
-				)
-
-				if (!result.isSuccess)
-				{
-					break
-				}
-
-				delay(Duration.ofSeconds(settings.pingInterval.seconds))
-			}
+			this@ServerManagerSession.pingAsync(this, Duration.ofSeconds(settings.pingInterval.seconds))
 		}
 	}
 
-	private fun <T> sendRequestAsync(builder: BouncerSessionRequest.Builder): Deferred<T>
+	private suspend fun pingAsync(scope: CoroutineScope, interval: Duration)
 	{
-		val requestId: Int = this.nextRequestId.incrementAndGet()
-		val deferred: CompletableDeferred<T> = CompletableDeferred()
+		while (scope.isActive)
+		{
+			val success: Boolean = this.writeAndForget(
+				clientSessionMessage()
+				{
+					this.pingRequest = pingRequest {}
+				}
+			)
 
-		this.requestResponses[requestId] = deferred
-		this.requestChannel.trySend(builder.setRequestId(requestId).build())
+			if (!success)
+			{
+				break
+			}
 
-		return deferred
+			delay(interval)
+		}
 	}
 
-	private fun sendRequestAndForget(request: BouncerSessionRequest)
+	private fun reserveRequest(messageId: Int, reserveRequest: ServerSessionMessage.ReserveRequest)
 	{
-		this.requestChannel.trySend(request)
+		when (reserveRequest.scopeCase)
+		{
+			ServerSessionMessage.ReserveRequest.ScopeCase.UNIVERSEID ->
+			{
+				val universe: IBouncerUniverse = this.universesByUniverseId[reserveRequest.universeId] ?: return
+
+				val reservationId: Int = this.nextReservationId.incrementAndGet()
+
+				this.serverManager.userManager.createReservation(reservationId, universe, reserveRequest.playersList.map(::toUuid).toSet())
+
+				this.writeAndForget(
+					clientSessionMessage()
+					{
+						this.messageId = messageId
+						this.reserveResponse = reserveResponse()
+						{
+							this.success = success()
+							{
+								this.reservationId = reservationId
+							}
+						}
+					}
+				)
+			}
+
+			else -> Unit
+		}
 	}
 
 	@OptIn(ExperimentalCoroutinesApi::class)
-	internal fun registerServer(server: BouncerServer)
+	internal fun registerServer(server: BouncerServer<*, *>)
 	{
-		val trackingId: Int = this.nextTrackingId.incrementAndGet()
+		val serverTrackingId: Int = this.nextServerTrackingId.incrementAndGet()
 
-		server.prepare(this, trackingId)
-		{ players ->
-			val job: Deferred<BouncerSessionResponse.ServerRegistration> = this.sendRequestAsync(
-				BouncerSessionRequest.newBuilder()
-				.setServerRegistration(
-					serverRegistration()
+		server.prepare(this, serverTrackingId)
+		{ players, universes ->
+			val pendingUniverses: ArrayDeque<BouncerUniverse<*, *>> = ArrayDeque()
+
+			val job: Deferred<ServerSessionMessage.ServerRegistrationResponse> = this.writeAsync(
+				ClientSessionMessage.newBuilder()
+				.setRegisterServerRequest(
+					serverRegistrationRequest()
 					{
-						this.trackingId = trackingId
+						this.trackingId = serverTrackingId
 						this.data = serverData()
 						{
 							this.name = server.info.name
@@ -142,8 +174,19 @@ internal class ServerManagerSession(private val stub: BouncerGrpcKt.BouncerCorou
 							}
 							if (server.info.maxMemory != null)
 							{
-								maxMemory = server.info.maxMemory!!
+								this.maxMemory = server.info.maxMemory!!
 							}
+						}
+
+						universes.forEach()
+						{ universe ->
+							pendingUniverses.add(universe)
+
+							val universeTrackingId: Int = this@ServerManagerSession.nextUniverseTrackingId.incrementAndGet()
+
+							universe.prepare(this@ServerManagerSession, universeTrackingId)
+
+							this.universes.add(this@ServerManagerSession.universeRegistration(universeTrackingId, universe))
 						}
 					}
 				)
@@ -156,43 +199,81 @@ internal class ServerManagerSession(private val stub: BouncerGrpcKt.BouncerCorou
 					return@invokeOnCompletion
 				}
 
-				// Never add it to the list of servers if we have been unregistered
-				val serverId: Int = job.getCompleted().serverId
-				if (!server.registered(this, serverId))
+				val response: ServerSessionMessage.ServerRegistrationResponse = job.getCompleted()
+
+				if (!this@ServerManagerSession.registerServer(server, serverTrackingId, response.serverId))
 				{
-					// Also send the unregistration, so it gets out of the load balancer queue
-					// NOTE: USE TRACKING ID! **NOT** SERVER ID!
-					return@invokeOnCompletion this@ServerManagerSession.sendUnregisterServer(trackingId)
+					return@invokeOnCompletion
 				}
 
-				this@ServerManagerSession.serversByServerId[serverId] = server
+				response.universesList.forEach()
+				{ response ->
+					val universe: BouncerUniverse<*, *> = pendingUniverses.removeFirst()
 
-				if (!server.registered && this@ServerManagerSession.serversByServerId.remove(serverId, server))
-				{
-					// NOTE: USE TRACKING ID! **NOT** SERVER ID!
-					this@ServerManagerSession.sendUnregisterServer(trackingId)
+					val sessionData: RegisteredBouncerScope.SessionData = universe.sessionData ?: return@forEach
+					if (sessionData.session != this@ServerManagerSession)
+					{
+						return@forEach
+					}
+
+					if (!this@ServerManagerSession.registerUniverse(universe, sessionData.trackingId, response.universeId))
+					{
+						return@invokeOnCompletion
+					}
 				}
 			}
 		}
 	}
 
-	internal fun unregisterServer(server: BouncerServer, trackingId: Int, serverId: Int)
+	private fun registerServer(server: BouncerServer<*, *>, trackingId: Int, scopeId: Int): Boolean
 	{
-		if (!this.serversByServerId.remove(serverId, server))
+		return this.registerScope(this.serversByServerId, this::sendUnregisterServer, server, trackingId, scopeId)
+	}
+
+	private fun registerUniverse(universe: BouncerUniverse<*, *>, trackingId: Int, scopeId: Int): Boolean
+	{
+		return this.registerScope(this.universesByUniverseId, this::sendUnregisterUniverse, universe, trackingId, scopeId)
+	}
+
+	private fun <T : RegisteredBouncerScope> registerScope(map: ConcurrentMap<Int, T>, unregister: (Int) -> Unit, scope: T, trackingId: Int, scopeId: Int): Boolean
+	{
+		if (!scope.registered(this, scopeId))
+		{
+			// Also send the unregistration, so it gets out of the load balancer queue
+			// NOTE: USE TRACKING ID! **NOT** SCOPE ID!
+			unregister(trackingId)
+			return false
+		}
+
+		map[scopeId] = scope
+
+		if (!scope.registered && map.remove(scopeId, scope))
+		{
+			// NOTE: USE TRACKING ID! **NOT** SCOPE ID!
+			unregister(trackingId)
+			return false
+		}
+
+		return true
+	}
+
+	internal fun unregisterServer(server: BouncerServer<*, *>, sessionData: RegisteredBouncerScope.SessionData)
+	{
+		if (!this.serversByServerId.remove(sessionData.scopeId, server))
 		{
 			return
 		}
 
 		// NOTE: USE TRACKING ID! **NOT** SERVER ID!
-		this.sendUnregisterServer(trackingId)
+		this.sendUnregisterServer(sessionData.trackingId)
 	}
 
 	private fun sendUnregisterServer(trackingId: Int)
 	{
-		this.sendRequestAndForget(
-			bouncerSessionRequest()
+		this.writeAndForget(
+			clientSessionMessage()
 			{
-				serverUnregistration = serverUnregistration()
+				this.unregisterServerRequest = serverUnregistrationRequest()
 				{
 					this.trackingId = trackingId
 				}
@@ -200,30 +281,105 @@ internal class ServerManagerSession(private val stub: BouncerGrpcKt.BouncerCorou
 		)
 	}
 
-	internal fun sendUpdate(update: BouncerSessionRequest.ServerUpdate)
+	internal fun sendUpdate(update: ClientSessionMessage.ServerUpdateRequest)
 	{
-		this.sendRequestAndForget(
-			bouncerSessionRequest()
+		this.writeAndForget(
+			clientSessionMessage()
 			{
-				this.serverUpdate = update
+				this.updateServerRequest = update
 			}
 		)
+	}
+
+	@OptIn(ExperimentalCoroutinesApi::class)
+	internal fun registerUniverse(universe: BouncerUniverse<*, *>, serverSessionData: RegisteredBouncerScope.SessionData)
+	{
+		val trackingId: Int = this.nextUniverseTrackingId.incrementAndGet()
+
+		universe.prepare(this, trackingId)
+
+		val job: Deferred<ServerSessionMessage.UniverseRegistrationResponse> = this.writeAsync(
+			ClientSessionMessage.newBuilder().setRegisterUniverseRequest(
+				universeRegistrationRequest()
+				{
+					this.serverTrackingId = serverSessionData.trackingId
+					this.registration = this@ServerManagerSession.universeRegistration(trackingId, universe)
+				}
+			)
+		)
+
+		job.invokeOnCompletion()
+		{ ex ->
+			if (ex != null)
+			{
+				return@invokeOnCompletion
+			}
+
+			val sessionData: RegisteredBouncerScope.SessionData = universe.sessionData ?: return@invokeOnCompletion
+			if (sessionData.session != this@ServerManagerSession)
+			{
+				return@invokeOnCompletion
+			}
+
+			val response: ServerSessionMessage.UniverseRegistrationResponse = job.getCompleted()
+
+			this@ServerManagerSession.registerUniverse(universe, sessionData.trackingId, response.universeId)
+		}
+	}
+
+	private fun universeRegistration(trackingId: Int, universe: BouncerUniverse<*, *>): ClientSessionMessage.UniverseRegistration
+	{
+		return universeRegistration()
+		{
+			this.trackingId = trackingId
+			this.data = universeData()
+			{
+				this.type = universe.options.info.type.toString()
+			}
+		}
+	}
+
+	internal fun unregisterUniverse(universe: BouncerUniverse<*, *>, sessionData: RegisteredBouncerScope.SessionData)
+	{
+		if (!this.universesByUniverseId.remove(sessionData.scopeId, universe))
+		{
+			return
+		}
+
+		// NOTE: USE TRACKING ID! **NOT** UNIVERSE ID!
+		this.sendUnregisterUniverse(sessionData.trackingId)
+	}
+
+	private fun sendUnregisterUniverse(trackingId: Int)
+	{
+		this.writeAndForget(clientSessionMessage()
+		{
+			this.unregisterUniverseRequest = universeUnregistrationRequest()
+			{
+				this.trackingId = trackingId
+			}
+		})
+	}
+
+	override fun prepareResponse(messageId: Int, response: ClientSessionMessage.Builder): ClientSessionMessage
+	{
+		return response.setMessageId(messageId).build()
 	}
 
 	internal fun shutdown(intentional: Boolean = false)
 	{
 		this.serversByServerId.values.forEach { server -> server.lostConnection() }
 
-		this.requestChannel.trySend(
-			bouncerSessionRequest()
+		this.writeAndForget(
+			clientSessionMessage()
 			{
-				close = close()
+				this.closeRequest = closeRequest()
 				{
 					this.intentional = intentional
 				}
 			}
 		)
 
-		this.requestChannel.close()
+		super.shutdown()
 	}
 }

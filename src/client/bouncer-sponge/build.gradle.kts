@@ -14,18 +14,21 @@ version = "1.0-SNAPSHOT"
 
 dependencies {
 	implementation(project(":bouncer-common"))
+
+	implementation(libs.harmony.sponge)
 }
 
 sponge {
-	apiVersion("10.0.0")
+	apiVersion("12.0.0")
 	license("MIT")
 	loader {
 		name(PluginLoaders.JAVA_PLAIN)
 		version("1.0")
 	}
 	plugin("bouncer") {
+		entrypoint("io.quut.bouncer.sponge.SpongeBouncerPluginLoader")
+		guiceModule("io.quut.bouncer.sponge.SpongeBouncerPluginLoader\$Module")
 		displayName("Bouncer")
-		entrypoint("io.quut.bouncer.sponge.SpongeBouncerPlugin")
 		description("A load balancer for Minecraft servers")
 		links {
 			homepage("https://github.com/Quutio/Bouncer")
@@ -45,7 +48,7 @@ sponge {
 	}
 }
 
-val targetJava = 17
+val targetJava = 21
 val targetJavaVersion = JavaVersion.toVersion(targetJava)
 java {
 	sourceCompatibility = targetJavaVersion
@@ -76,16 +79,18 @@ tasks.withType<ShadowJar> {
 	relocate("com.google", "io.quut.bouncer.libs.com.google") {
 		exclude("com.google.inject.**")
 	}
+	relocate("com.github", "io.quut.bouncer.libs.com.github")
 	relocate("io", "io.quut.bouncer.libs.io") {
-		exclude("io.quut.**")
+		exclude("io.quut.bouncer.**")
 	}
 	relocate("javax.annotation", "io.quut.bouncer.libs.javax.annotation")
 	relocate("kotlin", "io.quut.bouncer.libs.kotlin")
 	relocate("kotlinx", "io.quut.bouncer.libs.kotlinx")
 	relocate("org", "io.quut.bouncer.libs.org") {
 		exclude("org.spongepowered.**")
-		exclude("org.apache.logging.**")
+		exclude("org.slf4j.**")
 	}
+	relocate("_COROUTINE", "io.quut.bouncer.libs._COROUTINE")
 }
 
 tasks.named("assemble").configure {

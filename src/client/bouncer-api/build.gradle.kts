@@ -4,3 +4,7 @@ plugins {
 
 group = "io.quut"
 version = "1.0-SNAPSHOT"
+
+dependencies {
+	compileOnlyApi(libs.adventure.api)
+}

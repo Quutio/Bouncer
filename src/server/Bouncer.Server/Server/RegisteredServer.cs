@@ -1,7 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using Bouncer.Grpc;
 using Bouncer.Server.Logging;
-using Bouncer.Server.Server.Listener;
+using Bouncer.Server.Server.Watch;
+using Bouncer.Server.Session;
 
 namespace Bouncer.Server.Server;
 
@@ -9,9 +10,10 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 {
 	private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
-	private readonly ServerManager serverManager;
-
 	private readonly ILogger<RegisteredServer> logger;
+
+	private readonly ServerManager serverManager;
+	private readonly BouncerSession session;
 
 	public uint Id { get; }
 	public string Name { get; } //Immutable, don't use the one from ServerData
@@ -25,11 +27,12 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 
 	internal bool Unregistration { get; private set; }
 
-	internal RegisteredServer(ServerManager serverManager, ILogger<RegisteredServer> logger, uint id, ServerData data)
+	internal RegisteredServer(ILogger<RegisteredServer> logger, ServerManager serverManager, BouncerSession session, uint id, ServerData data)
 	{
-		this.serverManager = serverManager;
-
 		this.logger = logger;
+
+		this.serverManager = serverManager;
+		this.session = session;
 
 		this.Id = id;
 		this.Name = data.Name;
@@ -88,12 +91,12 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 		}
 	}
 
-	internal CancellationTokenRegistration AddListener(ServerStatusListener listener)
+	internal CancellationTokenRegistration AddWatcher(ServerWatcher watcher)
 	{
 		return this.cancellationTokenSource.Token.UnsafeRegister(state =>
 		{
-			((ServerStatusListener)state!).RemoveServer(this);
-		}, listener);
+			((ServerWatcher)state!).RemoveServer(this);
+		}, watcher);
 	}
 
 	internal void Unregister() => this.serverManager.Unregister(this);

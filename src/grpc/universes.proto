@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package quutio.bouncer;
+
+option csharp_namespace = "Bouncer.Grpc";
+option java_package = "io.quut.bouncer.grpc";
+option java_multiple_files = true;
+
+message UniverseData {
+	string type = 1;
+}

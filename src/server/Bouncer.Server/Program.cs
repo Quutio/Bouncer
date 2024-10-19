@@ -1,5 +1,7 @@
-﻿using Bouncer.Server.Server;
+﻿using Bouncer.Server.Queue;
+using Bouncer.Server.Server;
 using Bouncer.Server.Services;
+using Bouncer.Server.Universes;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +14,8 @@ builder.Services.Configure<HostOptions>(options =>
 builder.Services.AddGrpc();
 
 builder.Services.AddSingleton<ServerManager>();
-//builder.Services.AddSingleton<GameManager>();
+builder.Services.AddSingleton<UniverseManager>();
+builder.Services.AddSingleton<QueueManager>();
 
 builder.Services.AddSingleton<GrpcBouncerService>();
 

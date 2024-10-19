@@ -1,123 +1,30 @@
 ﻿using Bouncer.Grpc;
+using Bouncer.Server.Queue;
 using Bouncer.Server.Server;
 using Bouncer.Server.Server.Filter;
-using Bouncer.Server.Server.Listener;
 using Bouncer.Server.Server.Sort;
+using Bouncer.Server.Server.Watch;
+using Bouncer.Server.Session;
+using Bouncer.Server.Universes;
 using Google.Protobuf;
 using Google.Protobuf.Collections;
-using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 
 namespace Bouncer.Server.Services;
 
-internal sealed class GrpcBouncerService(ServerManager serverManager) : Grpc.Bouncer.BouncerBase
+internal sealed class GrpcBouncerService(ServerManager serverManager, UniverseManager universeManager, QueueManager queueManager) : Grpc.Bouncer.BouncerBase
 {
 	private readonly ServerManager serverManager = serverManager;
+	private readonly UniverseManager universeManager = universeManager;
+	private readonly QueueManager queueManager = queueManager;
 
-	public override async Task Session(IAsyncStreamReader<BouncerSessionRequest> requestStream, IServerStreamWriter<BouncerSessionResponse> responseStream, ServerCallContext context)
+	public override async Task Session(IAsyncStreamReader<ClientSessionMessage> requestStream, IServerStreamWriter<ServerSessionMessage> responseStream, ServerCallContext context)
 	{
-		await responseStream.WriteAsync(new BouncerSessionResponse
-		{
-			Settings = new BouncerSessionResponse.Types.Settings
-			{
-				PingInterval = Duration.FromTimeSpan(TimeSpan.FromSeconds(1))
-			}
-		});
-
-		Dictionary<int, RegisteredServer> servers = [];
+		await using BouncerSession session = new(this.serverManager, this.universeManager, requestStream, responseStream);
 
 		try
 		{
-			using CancellationTokenSource timeoutTokenSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
-			await using Timer timeoutTimer = new(static state => ((CancellationTokenSource)state!).Cancel(), timeoutTokenSource, TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
-
-			while (await requestStream.MoveNext(timeoutTokenSource.Token).ConfigureAwait(false))
-			{
-				BouncerSessionRequest request = requestStream.Current;
-
-				switch (request.RequestCase)
-				{
-					case BouncerSessionRequest.RequestOneofCase.Close:
-					{
-						foreach (RegisteredServer server in servers.Values)
-						{
-							this.serverManager.Unregister(server, unregistration: request.Close.Intentional);
-						}
-
-						servers.Clear();
-
-						return;
-					}
-
-					case BouncerSessionRequest.RequestOneofCase.Ping:
-					{
-						timeoutTimer.Change(TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
-
-						break;
-					}
-
-					case BouncerSessionRequest.RequestOneofCase.ServerRegistration:
-					{
-						RegisteredServer server = this.serverManager.Register(request.ServerRegistration.Data, request.ServerRegistration.Status);
-
-						servers[request.ServerRegistration.TrackingId] = server;
-
-						if (request.HasRequestId)
-						{
-							await responseStream.WriteAsync(new BouncerSessionResponse
-							{
-								RequestId = request.RequestId,
-								ServerRegistration = new BouncerSessionResponse.Types.ServerRegistration
-								{
-									ServerId = (int)server.Id
-								}
-							}, timeoutTokenSource.Token).ConfigureAwait(false);
-						}
-
-						break;
-					}
-
-					case BouncerSessionRequest.RequestOneofCase.ServerUnregistration:
-					{
-						if (!servers.Remove(request.ServerUnregistration.TrackingId, out RegisteredServer? server))
-						{
-							continue;
-						}
-
-						this.serverManager.Unregister(server, unregistration: true);
-
-						if (request.HasRequestId)
-						{
-							await responseStream.WriteAsync(new BouncerSessionResponse
-							{
-								RequestId = request.RequestId
-							}, timeoutTokenSource.Token).ConfigureAwait(false);
-						}
-
-						break;
-					}
-
-					case BouncerSessionRequest.RequestOneofCase.ServerUpdate:
-					{
-						if (!servers.TryGetValue(request.ServerUpdate.TrackingId, out RegisteredServer? server))
-						{
-							continue;
-						}
-
-						this.Update(server, request.ServerUpdate.Status);
-
-						if (request.HasRequestId)
-						{
-							await responseStream.WriteAsync(new BouncerSessionResponse
-							{
-								RequestId = request.RequestId
-							}, timeoutTokenSource.Token).ConfigureAwait(false);
-						}
-
-						break;
-					}
-				}
-			}
+			await session.StartAsync(context.CancellationToken).ConfigureAwait(false);
 		}
 		catch (OperationCanceledException)
 		{
@@ -126,36 +33,6 @@ internal sealed class GrpcBouncerService(ServerManager serverManager) : Grpc.Bou
 		catch (IOException e) when (e.InnerException is OperationCanceledException)
 		{
 			//Swallow
-		}
-		finally
-		{
-			foreach (RegisteredServer server in servers.Values)
-			{
-				this.serverManager.Unregister(server);
-			}
-		}
-	}
-
-	private void Update(RegisteredServer server, ServerStatusUpdate update)
-	{
-		foreach (ByteString player in update.PlayersJoined)
-		{
-			server.Join(new Guid(player.Span, bigEndian: true));
-		}
-
-		foreach (ByteString player in update.PlayersLeft)
-		{
-			server.Quit(new Guid(player.Span, bigEndian: true));
-		}
-
-		if (update.HasTps)
-		{
-			server.Status.Tps = update.Tps;
-		}
-
-		if (update.HasMemory)
-		{
-			server.Status.Memory = update.Memory;
 		}
 	}
 
@@ -192,6 +69,33 @@ internal sealed class GrpcBouncerService(ServerManager serverManager) : Grpc.Bou
 		});
 	}
 
+	public override async Task<JoinUniverseResponse> JoinUniverse(JoinUniverseRequest request, ServerCallContext context)
+	{
+		foreach (RegisteredUniverse universe in this.universeManager.Universes.Where(g => g.Data.Type == request.UniverseType))
+		{
+			int? reservationId = await universe.ReserveSlot(request.Players);
+			if (reservationId is null)
+			{
+				continue;
+			}
+
+			return new JoinUniverseResponse
+			{
+				Success = new JoinUniverseResponse.Types.Success
+				{
+					ServerId = (int)universe.Server.Id,
+					UniverseId = (int)universe.Id,
+					ReservationId = (int)reservationId
+				}
+			};
+		}
+
+		return new JoinUniverseResponse
+		{
+			NoServers = new JoinUniverseResponse.Types.NoServers()
+		};
+	}
+
 	public override Task<ServerListResponse> ListServers(ServerListRequest request, ServerCallContext context)
 	{
 		ServerListResponse response = new();
@@ -219,15 +123,37 @@ internal sealed class GrpcBouncerService(ServerManager serverManager) : Grpc.Bou
 		return Task.FromResult(response);
 	}
 
-	public override async Task Listen(BouncerListenRequest request, IServerStreamWriter<BouncerListenResponse> responseStream, ServerCallContext context)
+	public override async Task Watch(BouncerWatchRequest request, IServerStreamWriter<BouncerWatchResponse> responseStream, ServerCallContext context)
 	{
 		try
 		{
-			ServerStatusListener listener = this.serverManager.CreateServerListener(this.CreateFilter(request.Server.Filter));
+			ServerWatcher watcher = this.serverManager.CreateServerWatcher(this.CreateFilter(request.Server.Filter));
 
-			await listener.Listen(responseStream, context.CancellationToken).ConfigureAwait(false);
+			await watcher.Watch(responseStream, context.CancellationToken).ConfigureAwait(false);
 		}
 		catch (OperationCanceledException)
+		{
+			//Swallow
+		}
+		catch (IOException e) when (e.InnerException is OperationCanceledException)
+		{
+			//Swallow
+		}
+	}
+
+	public override async Task UniverseQueue(IAsyncStreamReader<UniverseQueueRequest> requestStream, IServerStreamWriter<UniverseQueueResponse> responseStream, ServerCallContext context)
+	{
+		QueueSession session = new(this.queueManager, requestStream, responseStream);
+
+		try
+		{
+			await session.StartAsync(context.CancellationToken).ConfigureAwait(false);
+		}
+		catch (OperationCanceledException)
+		{
+			//Swallow
+		}
+		catch (IOException e) when (e.InnerException is OperationCanceledException)
 		{
 			//Swallow
 		}

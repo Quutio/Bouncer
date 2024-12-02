@@ -11,7 +11,7 @@ import io.quut.bouncer.common.server.BouncerServer
 abstract class BouncerUniverse<TServer, TUniverse>(internal val server: TServer, internal val options: IBouncerUniverseOptions) : RegisteredBouncerScope(), IBouncerUniverse
 	where TServer : BouncerServer<TServer, TUniverse>, TUniverse : BouncerUniverse<TServer, TUniverse>
 {
-	internal var stage: IBouncerUniverseStage<*>? = null
+	final override var stage: IBouncerUniverseStage<*>? = null
 		private set
 
 	override val mutex: Any

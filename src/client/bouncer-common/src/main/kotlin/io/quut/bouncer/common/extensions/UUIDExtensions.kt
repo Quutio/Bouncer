@@ -4,7 +4,7 @@ import com.google.protobuf.ByteString
 import java.nio.ByteBuffer
 import java.util.UUID
 
-internal fun UUID.toByteArray(): ByteArray
+fun UUID.toByteArray(): ByteArray
 {
 	val buffer: ByteBuffer = ByteBuffer.wrap(ByteArray(16))
 	buffer.putLong(this.mostSignificantBits)
@@ -12,9 +12,9 @@ internal fun UUID.toByteArray(): ByteArray
 	return buffer.array()
 }
 
-internal fun toUuid(bytes: ByteString): UUID = toUuid(bytes.asReadOnlyByteBuffer())
+fun ByteString.toUuid(): UUID = this.asReadOnlyByteBuffer().getUuid()
 
-internal fun toUuid(bytes: ByteBuffer): UUID
+fun ByteBuffer.getUuid(): UUID
 {
-	return UUID(bytes.getLong(), bytes.getLong())
+	return UUID(this.getLong(), this.getLong())
 }

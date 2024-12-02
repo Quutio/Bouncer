@@ -122,7 +122,7 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 
 				val reservationId: Int = this.nextReservationId.incrementAndGet()
 
-				this.serverManager.userManager.createReservation(reservationId, universe, reserveRequest.playersList.map(::toUuid).toSet())
+				this.serverManager.userManager.createReservation(reservationId, universe, reserveRequest.playersList.map(ByteString::toUuid).toSet())
 
 				this.writeAndForget(
 					clientSessionMessage()

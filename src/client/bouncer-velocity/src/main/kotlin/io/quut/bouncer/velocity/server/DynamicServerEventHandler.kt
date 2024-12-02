@@ -6,6 +6,7 @@ import com.velocitypowered.api.proxy.server.ServerInfo
 import io.quut.bouncer.api.server.IBouncerServerEventHandler
 import io.quut.bouncer.api.server.IBouncerServerInfo
 import org.slf4j.Logger
+import java.net.InetSocketAddress
 
 internal class DynamicServerEventHandler(private val logger: Logger, private val proxy: ProxyServer) : IBouncerServerEventHandler
 {
@@ -15,11 +16,26 @@ internal class DynamicServerEventHandler(private val logger: Logger, private val
 
 	override fun addServer(id: Int, server: IBouncerServerInfo)
 	{
-		this.logger.info("Registering dynamic server {} ({}:{})", server.name, server.address.hostString, server.address.port)
+		this.proxy.getServer(server.name).ifPresentOrElse(
+		{ registeredServer ->
+			val registeredServerAddress: InetSocketAddress = registeredServer.serverInfo.address
+			if (registeredServerAddress.hostString == server.address.hostString && registeredServerAddress.port == server.address.port)
+			{
+				this.logger.warn("Unable to register dynamic server {}, it is already present!", server.name)
+			}
+			else
+			{
+				this.logger.error("Unable to register dynamic server {} ({}:{}), it is already registered to {}:{}!",
+					server.name, server.address.hostString, server.address.port, registeredServerAddress.hostString, registeredServerAddress.port)
+			}
+		})
+		{
+			this.logger.info("Registering dynamic server {} ({}:{})", server.name, server.address.hostString, server.address.port)
 
-		val registeredServer: RegisteredServer = this.proxy.registerServer(ServerInfo(server.name, server.address))
+			val registeredServer: RegisteredServer = this.proxy.registerServer(ServerInfo(server.name, server.address))
 
-		this.servers[id] = registeredServer
+			this.servers[id] = registeredServer
+		}
 	}
 
 	override fun removeServer(id: Int, server: IBouncerServerInfo, reason: IBouncerServerEventHandler.RemoveReason)

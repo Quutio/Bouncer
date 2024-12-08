@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.0.0"
+kotlin = "2.1.0"
 kotlinx = "1.8.1"
 ptotobuf = "4.27.0"
 grpc-protobuf = "1.64.0"

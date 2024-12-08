@@ -1,5 +1,4 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.spongepowered.gradle.plugin.config.PluginLoaders
 import org.spongepowered.plugin.metadata.model.PluginDependency
 
@@ -48,29 +47,8 @@ sponge {
 	}
 }
 
-val targetJava = 21
-val targetJavaVersion = JavaVersion.toVersion(targetJava)
-java {
-	sourceCompatibility = targetJavaVersion
-	targetCompatibility = targetJavaVersion
-	if (JavaVersion.current() < targetJavaVersion) {
-		toolchain {
-			languageVersion.set(JavaLanguageVersion.of(targetJava))
-		}
-	}
-}
-
-tasks {
-	withType<JavaCompile> {
-		options.encoding = "UTF-8"
-		options.release.set(targetJava)
-	}
-
-	withType<KotlinCompile> {
-		kotlinOptions {
-			jvmTarget = targetJava.toString()
-		}
-	}
+kotlin {
+	jvmToolchain(21)
 }
 
 tasks.withType<ShadowJar> {

@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
 	`maven-publish`
 	`java-library`
@@ -14,6 +12,7 @@ allprojects {
 	version = "1.0-SNAPSHOT"
 
 	apply(plugin = "java-library")
+	apply(plugin = "kotlin")
 	apply(plugin = "com.diffplug.spotless")
 
 	spotless {
@@ -49,29 +48,8 @@ allprojects {
 		}
 	}
 
-	val targetJava = 11
-	val targetJavaVersion = JavaVersion.toVersion(targetJava)
-	java {
-		sourceCompatibility = targetJavaVersion
-		targetCompatibility = targetJavaVersion
-		if (JavaVersion.current() < targetJavaVersion) {
-			toolchain {
-				languageVersion.set(JavaLanguageVersion.of(targetJava))
-			}
-		}
-	}
-
-	tasks {
-		withType<JavaCompile> {
-			options.encoding = "UTF-8"
-			options.release.set(targetJava)
-		}
-
-		withType<KotlinCompile> {
-			kotlinOptions {
-				jvmTarget = targetJava.toString()
-			}
-		}
+	kotlin {
+		jvmToolchain(11)
 	}
 }
 

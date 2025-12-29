@@ -32,4 +32,4 @@ kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 protobuf = { id = "com.google.protobuf", version = "0.9.4" }
 shadow = { id = "io.github.goooler.shadow", version.ref = "shadow" }
 spotless = { id = "com.diffplug.spotless", version = "6.25.0" }
-sponge = { id = "org.spongepowered.gradle.plugin", version = "2.2.1-SNAPSHOT" }
+sponge = { id = "org.spongepowered.gradle.plugin", version = "2.3.0" }

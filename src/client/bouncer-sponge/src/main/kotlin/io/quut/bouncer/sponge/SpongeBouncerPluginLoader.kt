@@ -36,7 +36,7 @@ import java.net.InetSocketAddress
 @Plugin(Const.NAMESPACE)
 class SpongeBouncerPluginLoader @Inject internal constructor(
 	override val container: PluginContainer,
-	@DefaultConfig(sharedRoot = false) override val configLoader: ConfigurationLoader<CommentedConfigurationNode>,
+	@param: DefaultConfig(sharedRoot = false) override val configLoader: ConfigurationLoader<CommentedConfigurationNode>,
 	private val game: Game,
 	private val eventManager: EventManager,
 	private val bouncer: SpongeBouncerPlugin,

@@ -69,7 +69,7 @@ subprojects {
 				}
 			}
 
-			val mavenUser: String by project
+			/*val mavenUser: String by project
 			val mavenPassword: String by project
 
 			repositories {
@@ -82,7 +82,7 @@ subprojects {
 					name = "equelix-snapshots"
 					url = uri("https://maven.quut.io/repository/maven-snapshots/")
 				}
-			}
+			}*/
 		}
 	}
 }

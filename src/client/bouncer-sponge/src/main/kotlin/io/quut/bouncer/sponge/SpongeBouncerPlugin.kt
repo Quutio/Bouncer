@@ -1,7 +1,6 @@
 package io.quut.bouncer.sponge
 
 import com.google.inject.Inject
-import io.quut.bouncer.api.IBouncerScopeListener
 import io.quut.bouncer.api.server.IBouncerServer
 import io.quut.bouncer.api.server.IBouncerServerHeartbeat
 import io.quut.bouncer.api.server.IBouncerServerInfo
@@ -12,6 +11,7 @@ import io.quut.bouncer.sponge.config.PluginConfig
 import io.quut.bouncer.sponge.listeners.FallbackServerListener
 import io.quut.bouncer.sponge.server.SpongeBouncerServerManager
 import org.spongepowered.api.Game
+import org.spongepowered.api.event.EventManager
 import org.spongepowered.api.scheduler.Task
 import org.spongepowered.configurate.CommentedConfigurationNode
 import java.time.Duration
@@ -19,6 +19,7 @@ import java.time.Duration
 internal class SpongeBouncerPlugin @Inject constructor(
 	private val plugin: ISpongeBouncerPlugin,
 	private val game: Game,
+	private val eventManager: EventManager,
 	networkManager: NetworkManager,
 	serverManager: SpongeBouncerServerManager) : BouncerPlugin(networkManager, serverManager)
 {
@@ -35,21 +36,12 @@ internal class SpongeBouncerPlugin @Inject constructor(
 
 	override fun defaultServerOptions(info: IBouncerServerInfo): IBouncerServerOptions
 	{
-		val listener: IBouncerScopeListener<IBouncerServer>
-		if (this.config.fallback)
-		{
-			listener = IBouncerScopeListener.of(this.plugin.container, { server -> FallbackServerListener.Accept(server) }, this.plugin.lookup)
-		}
-		else
-		{
-			listener = IBouncerScopeListener.of(this.plugin.container, { _ -> FallbackServerListener.Refuse() }, this.plugin.lookup)
-		}
-
-		return IBouncerServerOptions.of(info, listener)
+		return IBouncerServerOptions.of(info)
 	}
 
 	override fun defaultServerCreated(server: IBouncerServer)
 	{
+		this.eventManager.registerListeners(this.plugin.container, FallbackServerListener.Accept(server))
 	}
 
 	override fun installHeartbeat(runnable: Runnable)

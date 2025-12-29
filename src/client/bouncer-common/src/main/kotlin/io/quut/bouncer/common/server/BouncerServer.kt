@@ -14,7 +14,7 @@ import io.quut.bouncer.grpc.ServerStatusUpdate
 import io.quut.bouncer.grpc.serverStatusUpdate
 import java.util.UUID
 
-abstract class BouncerServer<TServer, TUniverse>(private val serverManager: AbstractServerManager<TServer, TUniverse>, internal val info: IBouncerServerInfo) : RegisteredBouncerScope(), IBouncerServer
+abstract class BouncerServer<TServer, TUniverse>(internal val info: IBouncerServerInfo) : RegisteredBouncerScope(), IBouncerServer
 	where TServer : BouncerServer<TServer, TUniverse>, TUniverse : BouncerUniverse<TServer, TUniverse>
 {
 	private val players: MutableSet<UUID> = hashSetOf()
@@ -130,9 +130,6 @@ abstract class BouncerServer<TServer, TUniverse>(private val serverManager: Abst
 	override fun registerUniverse(options: IBouncerUniverseOptions): IBouncerUniverse
 	{
 		val universe: TUniverse = this.createUniverse(options)
-		universe.init()
-
-		this.serverManager.register(universe, options.area)
 
 		synchronized(this.mutex)
 		{

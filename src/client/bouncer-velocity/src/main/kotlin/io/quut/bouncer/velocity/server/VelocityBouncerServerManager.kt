@@ -8,5 +8,5 @@ import io.quut.bouncer.velocity.universe.VelocityBouncerUniverse
 
 internal class VelocityBouncerServerManager(networkManager: NetworkManager, userManager: UserManager) : AbstractServerManager<VelocityBouncerServer, VelocityBouncerUniverse>(networkManager, userManager)
 {
-	override fun createServer(options: IBouncerServerOptions): VelocityBouncerServer = VelocityBouncerServer(this, options.info)
+	override fun createServer(options: IBouncerServerOptions): VelocityBouncerServer = VelocityBouncerServer(options.info)
 }

@@ -42,6 +42,11 @@ abstract class BouncerPlugin(private val networkManager: NetworkManager, overrid
 
 		this.installShutdownSignal()
 
+		if (!this.config.defaultServer)
+		{
+			return
+		}
+
 		val info = IBouncerServerInfo.of(
 			this.config.name,
 			this.config.group,
@@ -52,7 +57,6 @@ abstract class BouncerPlugin(private val networkManager: NetworkManager, overrid
 		val server: IBouncerServer = this.serverManager.registerServer(this.defaultServerOptions(info))
 
 		this.serverManager.defaultServer = server
-		this.serverManager.fallback = server
 
 		this.defaultServerCreated(server)
 

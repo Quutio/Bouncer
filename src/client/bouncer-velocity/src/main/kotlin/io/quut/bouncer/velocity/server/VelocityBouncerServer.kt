@@ -5,7 +5,7 @@ import io.quut.bouncer.api.universe.IBouncerUniverseOptions
 import io.quut.bouncer.common.server.BouncerServer
 import io.quut.bouncer.velocity.universe.VelocityBouncerUniverse
 
-internal class VelocityBouncerServer(serverManager: VelocityBouncerServerManager, info: IBouncerServerInfo) : BouncerServer<VelocityBouncerServer, VelocityBouncerUniverse>(serverManager, info)
+internal class VelocityBouncerServer(info: IBouncerServerInfo) : BouncerServer<VelocityBouncerServer, VelocityBouncerUniverse>(info)
 {
 	override fun createUniverse(options: IBouncerUniverseOptions): VelocityBouncerUniverse
 	{

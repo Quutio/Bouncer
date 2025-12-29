@@ -7,7 +7,6 @@ grpc-kotlin = "1.4.1"
 velocity = "3.3.0-SNAPSHOT"
 shadow = "8.1.7"
 adventure = "4.17.0"
-harmony = "1.2.2"
 caffeine = "3.1.8"
 
 [libraries]
@@ -22,8 +21,6 @@ grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-ko
 grpc-kotlin-plugin = { module = "io.grpc:protoc-gen-grpc-kotlin", version.ref = "grpc-kotlin" }
 velocity = { module = "com.velocitypowered:velocity-api", version.ref = "velocity" }
 adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
-harmony-api = { module = "io.quut:harmony-api", version.ref = "harmony" }
-harmony-sponge = { module = "io.quut:harmony-sponge", version.ref = "harmony" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 
 [plugins]

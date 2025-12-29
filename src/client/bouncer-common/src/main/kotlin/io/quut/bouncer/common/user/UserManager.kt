@@ -44,5 +44,5 @@ open class UserManager
 		fun isValid(timeout: Duration) = System.nanoTime() - this.reservationTime <= timeout.toNanos()
 	}
 
-	class UserData(val scope: IBouncerScope?)
+	class UserData
 }

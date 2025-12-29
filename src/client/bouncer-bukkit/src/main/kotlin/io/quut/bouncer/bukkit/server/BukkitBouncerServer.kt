@@ -5,7 +5,7 @@ import io.quut.bouncer.api.universe.IBouncerUniverseOptions
 import io.quut.bouncer.bukkit.universe.BukkitBouncerUniverse
 import io.quut.bouncer.common.server.BouncerServer
 
-internal class BukkitBouncerServer(serverManager: BukkitBouncerServerManager, info: IBouncerServerInfo) : BouncerServer<BukkitBouncerServer, BukkitBouncerUniverse>(serverManager, info)
+internal class BukkitBouncerServer(info: IBouncerServerInfo) : BouncerServer<BukkitBouncerServer, BukkitBouncerUniverse>(info)
 {
 	override fun createUniverse(options: IBouncerUniverseOptions): BukkitBouncerUniverse
 	{

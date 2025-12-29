@@ -19,15 +19,18 @@ internal class VelocityBouncerPlugin(private val plugin: VelocityBouncerPluginLo
 	{
 		this.config = object : IBouncerConfig
 		{
+			override val apiUrl: String
+				get() = "localhost:5000"
+
+			override val defaultServer: Boolean
+				get() = true
+
 			override val name: String
 				get() = "proxy"
 			override val group: String
 				get() = "proxy"
 			override val type: String
 				get() = "velocity"
-
-			override val apiUrl: String
-				get() = "localhost:5000"
 		}
 	}
 

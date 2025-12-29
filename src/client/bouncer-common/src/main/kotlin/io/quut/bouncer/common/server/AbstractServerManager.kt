@@ -1,14 +1,11 @@
 package io.quut.bouncer.common.server
 
-import io.quut.bouncer.api.IBouncerScope
 import io.quut.bouncer.api.server.IBouncerServer
 import io.quut.bouncer.api.server.IBouncerServerFilter
 import io.quut.bouncer.api.server.IBouncerServerManager
 import io.quut.bouncer.api.server.IBouncerServerOptions
 import io.quut.bouncer.api.server.IBouncerServerWatchRequest
 import io.quut.bouncer.api.server.IBouncerServerWatcher
-import io.quut.bouncer.api.universe.IBouncerUniverse
-import io.quut.bouncer.api.universe.IBouncerUniverseArea
 import io.quut.bouncer.common.network.NetworkManager
 import io.quut.bouncer.common.universe.BouncerUniverse
 import io.quut.bouncer.common.user.UserManager
@@ -22,7 +19,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import net.kyori.adventure.key.Key
 import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.concurrent.TimeUnit
@@ -36,12 +32,7 @@ abstract class AbstractServerManager<TServer, TUniverse>(private val networkMana
 
 	private val servers: MutableSet<TServer> = Collections.newSetFromMap(IdentityHashMap())
 
-	protected val worlds: MutableMap<Key, IBouncerScope> = hashMapOf()
-
 	override var defaultServer: IBouncerServer? = null
-
-	@JvmField
-	var fallback: IBouncerScope? = null
 
 	init
 	{
@@ -84,18 +75,6 @@ abstract class AbstractServerManager<TServer, TUniverse>(private val networkMana
 
 	internal open fun init()
 	{
-	}
-
-	internal fun register(universe: IBouncerUniverse, area: IBouncerUniverseArea)
-	{
-		if (area is IBouncerUniverseArea.IWorld)
-		{
-			this.worlds[area.worldKey] = universe
-		}
-		else if (area is IBouncerUniverseArea.ICompound)
-		{
-			area.scopes.forEach { area -> this.register(universe, area) }
-		}
 	}
 
 	protected abstract fun createServer(options: IBouncerServerOptions): TServer
@@ -145,11 +124,6 @@ abstract class AbstractServerManager<TServer, TUniverse>(private val networkMana
 		}
 	}
 
-	override fun setFallback(scope: IBouncerScope)
-	{
-		this.fallback = scope
-	}
-
 	override fun watch(request: IBouncerServerWatchRequest): IBouncerServerWatcher
 	{
 		fun createFilter(filter: IBouncerServerFilter): ServerFilter
@@ -191,7 +165,6 @@ abstract class AbstractServerManager<TServer, TUniverse>(private val networkMana
 	{
 		synchronized(this.startSessionSignal)
 		{
-			this.fallback = null
 			this.defaultServer = null
 
 			this.startSessionSignal.getAndSet(Job())

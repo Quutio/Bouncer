@@ -9,6 +9,12 @@ import ninja.leaping.configurate.objectmapping.serialize.ConfigSerializable
 @ConfigSerializable
 class PluginConfig : IBouncerConfig
 {
+	@Setting("api-url")
+	override lateinit var apiUrl: String
+
+	override val defaultServer: Boolean
+		get() = true
+
 	@Setting("name")
 	override lateinit var name: String
 
@@ -17,9 +23,6 @@ class PluginConfig : IBouncerConfig
 
 	@Setting("type")
 	override lateinit var type: String
-
-	@Setting("api-url")
-	override lateinit var apiUrl: String
 
 	companion object
 	{

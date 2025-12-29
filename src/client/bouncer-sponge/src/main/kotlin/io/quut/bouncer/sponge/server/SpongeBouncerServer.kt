@@ -2,14 +2,13 @@ package io.quut.bouncer.sponge.server
 
 import io.quut.bouncer.api.server.IBouncerServerInfo
 import io.quut.bouncer.api.universe.IBouncerUniverseOptions
-import io.quut.bouncer.common.server.HarmonyBouncerServer
+import io.quut.bouncer.common.server.BouncerServer
 import io.quut.bouncer.sponge.universe.SpongeBouncerUniverse
-import org.spongepowered.plugin.PluginContainer
 
-internal class SpongeBouncerServer(private val pluginContainer: PluginContainer, serverManager: SpongeBouncerServerManager, info: IBouncerServerInfo) : HarmonyBouncerServer<SpongeBouncerServer, SpongeBouncerUniverse>(serverManager, info)
+internal class SpongeBouncerServer(info: IBouncerServerInfo) : BouncerServer<SpongeBouncerServer, SpongeBouncerUniverse>(info)
 {
 	override fun createUniverse(options: IBouncerUniverseOptions): SpongeBouncerUniverse
 	{
-		return SpongeBouncerUniverse(this.pluginContainer, this, options)
+		return SpongeBouncerUniverse(this, options)
 	}
 }

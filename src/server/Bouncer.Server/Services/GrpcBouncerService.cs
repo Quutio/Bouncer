@@ -6,7 +6,6 @@ using Bouncer.Server.Server.Sort;
 using Bouncer.Server.Server.Watch;
 using Bouncer.Server.Session;
 using Bouncer.Server.Universes;
-using Google.Protobuf;
 using Google.Protobuf.Collections;
 using Grpc.Core;
 
@@ -41,24 +40,14 @@ internal sealed class GrpcBouncerService(ServerManager serverManager, UniverseMa
 		IServerFilter? filter = this.CreateFilter(request.Filter);
 		IServerSort? sort = this.CreateSort(request.Sort);
 
-		//TODO: Create dynamic sorted lists
-		foreach (RegisteredServer server in this.serverManager.Servers.OrderBy(key => key, (IComparer<RegisteredServer>?)sort ?? Comparer<RegisteredServer>.Default))
+		RegisteredServer? server = this.serverManager.Reserve(filter, sort, request.Players);
+		if (server is not null)
 		{
-			if (filter is not null && !filter.Filter(server))
-			{
-				continue;
-			}
-
-			foreach (ByteString user in request.Players)
-			{
-				server.ReserveSlot(new Guid(user.Span, bigEndian: true));
-			}
-
 			return Task.FromResult(new ServerJoinResponse
 			{
 				Success = new ServerJoinResponse.Types.Success
 				{
-					ServerId = (int)server.Id
+					ServerId = server.Id
 				}
 			});
 		}
@@ -83,8 +72,8 @@ internal sealed class GrpcBouncerService(ServerManager serverManager, UniverseMa
 			{
 				Success = new JoinUniverseResponse.Types.Success
 				{
-					ServerId = (int)universe.Server.Id,
-					UniverseId = (int)universe.Id,
+					ServerId = universe.Server.Id,
+					UniverseId = universe.Id,
 					ReservationId = (int)reservationId
 				}
 			};
@@ -101,22 +90,23 @@ internal sealed class GrpcBouncerService(ServerManager serverManager, UniverseMa
 		ServerListResponse response = new();
 		foreach (RegisteredServer server in this.serverManager.Servers)
 		{
-			ServerStatus status = new()
+			Players players = new()
 			{
 				PlayerListHumanReadable = new PlayerListHumanReadable()
 			};
 
 			foreach (Guid player in server.Players)
 			{
-				status.PlayerListHumanReadable.Players.Add(player.ToString());
+				players.PlayerListHumanReadable.Players.Add(player.ToString());
 			}
 
 			response.Servers.Add(new ServerDetails
 			{
-				ServerId = (int)server.Id,
+				ServerId = server.Id,
 
 				Data = server.Data,
-				Status = status
+				Status = server.Status,
+				Players = players
 			});
 		}
 

@@ -1,13 +1,14 @@
 package io.quut.bouncer.common.server
 
 import com.google.protobuf.ByteString
-import io.quut.bouncer.api.universe.IBouncerUniverse
+import io.quut.bouncer.api.universe.IDistributedUniverse
 import io.quut.bouncer.common.extensions.toByteArray
 import io.quut.bouncer.common.extensions.toUuid
 import io.quut.bouncer.common.network.BiDirectionalSession
 import io.quut.bouncer.common.network.NetworkManager
-import io.quut.bouncer.common.network.RegisteredBouncerScope
-import io.quut.bouncer.common.universe.BouncerUniverse
+import io.quut.bouncer.common.network.RegisteredBouncerUnit
+import io.quut.bouncer.common.universe.DistributedUniverse
+import io.quut.bouncer.common.user.UserManager
 import io.quut.bouncer.grpc.BouncerGrpcKt
 import io.quut.bouncer.grpc.ClientSessionMessage
 import io.quut.bouncer.grpc.ClientSessionMessageKt.ReserveResponseKt.success
@@ -21,10 +22,13 @@ import io.quut.bouncer.grpc.ClientSessionMessageKt.universeRegistrationRequest
 import io.quut.bouncer.grpc.ClientSessionMessageKt.universeUnregistrationRequest
 import io.quut.bouncer.grpc.ServerSessionMessage
 import io.quut.bouncer.grpc.clientSessionMessage
-import io.quut.bouncer.grpc.playerList
+import io.quut.bouncer.grpc.serverAddress
 import io.quut.bouncer.grpc.serverData
+import io.quut.bouncer.grpc.serverState
 import io.quut.bouncer.grpc.serverStatus
+import io.quut.bouncer.grpc.state
 import io.quut.bouncer.grpc.universeData
+import io.quut.bouncer.grpc.universeSupervisor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -39,15 +43,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class ServerManagerSession(private val serverManager: AbstractServerManager<*, *>, private val networkManager: NetworkManager)
+internal class ServerManagerSession(private val networkManager: NetworkManager, private val userManager: UserManager)
 	: BiDirectionalSession<ClientSessionMessage, ClientSessionMessage.Builder, ServerSessionMessage>()
 {
 	private val nextServerTrackingId: AtomicInteger = AtomicInteger()
 	private val nextUniverseTrackingId: AtomicInteger = AtomicInteger()
 	private val nextReservationId: AtomicInteger = AtomicInteger()
 
-	private val serversByServerId: ConcurrentMap<Int, BouncerServer<*, *>> = ConcurrentHashMap()
-	private val universesByUniverseId: ConcurrentMap<Int, BouncerUniverse<*, *>> = ConcurrentHashMap()
+	private val serversByServerId: ConcurrentMap<Int, DistributedServer> = ConcurrentHashMap()
+	private val universesByUniverseId: ConcurrentMap<Int, DistributedUniverse> = ConcurrentHashMap()
 
 	private var pingTask: Job? = null
 
@@ -118,11 +122,11 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 		{
 			ServerSessionMessage.ReserveRequest.ScopeCase.UNIVERSEID ->
 			{
-				val universe: IBouncerUniverse = this.universesByUniverseId[reserveRequest.universeId] ?: return
+				val universe: IDistributedUniverse = this.universesByUniverseId[reserveRequest.universeId] ?: return
 
 				val reservationId: Int = this.nextReservationId.incrementAndGet()
 
-				this.serverManager.userManager.createReservation(reservationId, universe, reserveRequest.playersList.map(ByteString::toUuid).toSet())
+				this.userManager.createReservation(reservationId, universe, reserveRequest.playersList.map(ByteString::toUuid).toSet())
 
 				this.writeAndForget(
 					clientSessionMessage()
@@ -144,13 +148,13 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 	}
 
 	@OptIn(ExperimentalCoroutinesApi::class)
-	internal fun registerServer(server: BouncerServer<*, *>)
+	internal fun registerServer(server: DistributedServer)
 	{
 		val serverTrackingId: Int = this.nextServerTrackingId.incrementAndGet()
 
 		server.prepare(this, serverTrackingId)
 		{ players, universes ->
-			val pendingUniverses: ArrayDeque<BouncerUniverse<*, *>> = ArrayDeque()
+			val pendingUniverses: ArrayDeque<DistributedUniverse> = ArrayDeque()
 
 			val job: Deferred<ServerSessionMessage.ServerRegistrationResponse> = this.writeAsync(
 				ClientSessionMessage.newBuilder()
@@ -163,20 +167,32 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 							this.name = server.info.name
 							this.group = server.info.group
 							this.type = server.info.type
-							this.host = server.info.address.hostString
-							this.port = server.info.address.port
+						}
+						this.state = serverState()
+						{
+							this.state = state()
+							{
+								this.type = server.state.type.asString()
+								server.state.maxPlayers?.let { m -> this.maxPlayers = m }
+							}
+							server.state.address?.let()
+							{ a ->
+								this.address = serverAddress()
+								{
+									this.host = a.hostString
+									this.port = a.port
+								}
+							}
 						}
 						this.status = serverStatus()
 						{
-							this.playerList = playerList()
-							{
-								players.forEach { player -> this.players.add(ByteString.copyFrom(player.toByteArray())) }
-							}
 							if (server.info.maxMemory != null)
 							{
 								this.maxMemory = server.info.maxMemory!!
 							}
 						}
+
+						players.forEach { player -> this.players.add(ByteString.copyFrom(player.toByteArray())) }
 
 						universes.forEach()
 						{ universe ->
@@ -208,9 +224,9 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 
 				response.universesList.forEach()
 				{ response ->
-					val universe: BouncerUniverse<*, *> = pendingUniverses.removeFirst()
+					val universe: DistributedUniverse = pendingUniverses.removeFirst()
 
-					val sessionData: RegisteredBouncerScope.SessionData = universe.sessionData ?: return@forEach
+					val sessionData: RegisteredBouncerUnit.SessionData = universe.sessionData ?: return@forEach
 					if (sessionData.session != this@ServerManagerSession)
 					{
 						return@forEach
@@ -225,17 +241,17 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 		}
 	}
 
-	private fun registerServer(server: BouncerServer<*, *>, trackingId: Int, scopeId: Int): Boolean
+	private fun registerServer(server: DistributedServer, trackingId: Int, scopeId: Int): Boolean
 	{
 		return this.registerScope(this.serversByServerId, this::sendUnregisterServer, server, trackingId, scopeId)
 	}
 
-	private fun registerUniverse(universe: BouncerUniverse<*, *>, trackingId: Int, scopeId: Int): Boolean
+	private fun registerUniverse(universe: DistributedUniverse, trackingId: Int, scopeId: Int): Boolean
 	{
 		return this.registerScope(this.universesByUniverseId, this::sendUnregisterUniverse, universe, trackingId, scopeId)
 	}
 
-	private fun <T : RegisteredBouncerScope> registerScope(map: ConcurrentMap<Int, T>, unregister: (Int) -> Unit, scope: T, trackingId: Int, scopeId: Int): Boolean
+	private fun <T : RegisteredBouncerUnit> registerScope(map: ConcurrentMap<Int, T>, unregister: (Int) -> Unit, scope: T, trackingId: Int, scopeId: Int): Boolean
 	{
 		if (!scope.registered(this, scopeId))
 		{
@@ -257,7 +273,7 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 		return true
 	}
 
-	internal fun unregisterServer(server: BouncerServer<*, *>, sessionData: RegisteredBouncerScope.SessionData)
+	internal fun unregisterServer(server: DistributedServer, sessionData: RegisteredBouncerUnit.SessionData)
 	{
 		if (!this.serversByServerId.remove(sessionData.scopeId, server))
 		{
@@ -292,7 +308,7 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 	}
 
 	@OptIn(ExperimentalCoroutinesApi::class)
-	internal fun registerUniverse(universe: BouncerUniverse<*, *>, serverSessionData: RegisteredBouncerScope.SessionData)
+	internal fun registerUniverse(universe: DistributedUniverse, serverSessionData: RegisteredBouncerUnit.SessionData)
 	{
 		val trackingId: Int = this.nextUniverseTrackingId.incrementAndGet()
 
@@ -315,7 +331,7 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 				return@invokeOnCompletion
 			}
 
-			val sessionData: RegisteredBouncerScope.SessionData = universe.sessionData ?: return@invokeOnCompletion
+			val sessionData: RegisteredBouncerUnit.SessionData = universe.sessionData ?: return@invokeOnCompletion
 			if (sessionData.session != this@ServerManagerSession)
 			{
 				return@invokeOnCompletion
@@ -327,19 +343,24 @@ internal class ServerManagerSession(private val serverManager: AbstractServerMan
 		}
 	}
 
-	private fun universeRegistration(trackingId: Int, universe: BouncerUniverse<*, *>): ClientSessionMessage.UniverseRegistration
+	private fun universeRegistration(trackingId: Int, universe: DistributedUniverse): ClientSessionMessage.UniverseRegistration
 	{
 		return universeRegistration()
 		{
 			this.trackingId = trackingId
 			this.data = universeData()
 			{
-				this.type = universe.options.info.type.toString()
+				this.type = universe.options.info.type.asString()
+				this.supervisor = universeSupervisor()
+				{
+					this.type = universe.supervisor.info.type.asString()
+					this.attributes.putAll(universe.supervisor.info.attributes)
+				}
 			}
 		}
 	}
 
-	internal fun unregisterUniverse(universe: BouncerUniverse<*, *>, sessionData: RegisteredBouncerScope.SessionData)
+	internal fun unregisterUniverse(universe: DistributedUniverse, sessionData: RegisteredBouncerUnit.SessionData)
 	{
 		if (!this.universesByUniverseId.remove(sessionData.scopeId, universe))
 		{

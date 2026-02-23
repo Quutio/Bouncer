@@ -1,15 +1,15 @@
 package io.quut.bouncer.common.server
 
-import io.quut.bouncer.api.server.IBouncerServer
-import io.quut.bouncer.api.server.IBouncerServerFilter
-import io.quut.bouncer.api.server.IBouncerServerManager
-import io.quut.bouncer.api.server.IBouncerServerOptions
-import io.quut.bouncer.api.server.IBouncerServerWatchRequest
-import io.quut.bouncer.api.server.IBouncerServerWatcher
+import io.quut.bouncer.api.server.IDistributedServerContainer
+import io.quut.bouncer.api.server.IDistributedServerFilter
+import io.quut.bouncer.api.server.IDistributedServerManager
+import io.quut.bouncer.api.server.IDistributedServerOptions
+import io.quut.bouncer.api.server.IDistributedServerWatchRequest
+import io.quut.bouncer.api.server.IDistributedServerWatcher
 import io.quut.bouncer.common.network.NetworkManager
-import io.quut.bouncer.common.universe.BouncerUniverse
 import io.quut.bouncer.common.user.UserManager
 import io.quut.bouncer.grpc.BouncerWatchRequestKt.server
+import io.quut.bouncer.grpc.BouncerWatchRequestKt.universe
 import io.quut.bouncer.grpc.ServerFilter
 import io.quut.bouncer.grpc.ServerFilterKt.group
 import io.quut.bouncer.grpc.bouncerWatchRequest
@@ -24,15 +24,12 @@ import java.util.IdentityHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-abstract class AbstractServerManager<TServer, TUniverse>(private val networkManager: NetworkManager, val userManager: UserManager) : IBouncerServerManager
-	where TServer : BouncerServer<TServer, TUniverse>, TUniverse : BouncerUniverse<TServer, TUniverse>
+abstract class AbstractServerManager(private val networkManager: NetworkManager, private val userManager: UserManager) : IDistributedServerManager
 {
 	private val startSessionSignal: AtomicReference<CompletableJob> = AtomicReference(Job())
-	private var session: ServerManagerSession = ServerManagerSession(this, this.networkManager)
+	private var session: ServerManagerSession = ServerManagerSession(this.networkManager, this.userManager)
 
-	private val servers: MutableSet<TServer> = Collections.newSetFromMap(IdentityHashMap())
-
-	override var defaultServer: IBouncerServer? = null
+	private val servers: MutableSet<DistributedServer> = Collections.newSetFromMap(IdentityHashMap())
 
 	init
 	{
@@ -57,7 +54,7 @@ abstract class AbstractServerManager<TServer, TUniverse>(private val networkMana
 					synchronized(this@AbstractServerManager.startSessionSignal)
 					{
 						this@AbstractServerManager.session.shutdown()
-						this@AbstractServerManager.session = ServerManagerSession(this@AbstractServerManager, this@AbstractServerManager.networkManager)
+						this@AbstractServerManager.session = ServerManagerSession(this@AbstractServerManager.networkManager, this@AbstractServerManager.userManager)
 
 						this@AbstractServerManager.servers.forEach()
 						{ server ->
@@ -73,20 +70,15 @@ abstract class AbstractServerManager<TServer, TUniverse>(private val networkMana
 		}
 	}
 
-	internal open fun init()
-	{
-	}
+	private fun createServer(options: IDistributedServerOptions): DistributedServer =
+		DistributedServer(options.info, options.state)
 
-	protected abstract fun createServer(options: IBouncerServerOptions): TServer
-
-	override fun registerServer(options: IBouncerServerOptions): IBouncerServer
+	override fun registerServer(options: IDistributedServerOptions): IDistributedServerContainer
 	{
-		val server: TServer = this.createServer(options) // Register the server async
+		val server: DistributedServer = this.createServer(options) // Register the server async
 
 		synchronized(this.startSessionSignal)
 		{
-			this.registerServer(options, server)
-
 			this.servers.add(server)
 			this.session.registerServer(server)
 
@@ -94,19 +86,10 @@ abstract class AbstractServerManager<TServer, TUniverse>(private val networkMana
 		}
 
 		// Return the server instance already so it can be mutated
-		return server
+		return DistributedServerContainer(server, this::unregisterServer)
 	}
 
-	protected open fun registerServer(options: IBouncerServerOptions, server: TServer)
-	{
-	}
-
-	override fun unregisterServer(server: IBouncerServer)
-	{
-		this.unregisterServer(server as BouncerServer<*, *>)
-	}
-
-	private fun unregisterServer(server: BouncerServer<*, *>)
+	private fun unregisterServer(server: DistributedServer)
 	{
 		synchronized(this.startSessionSignal)
 		{
@@ -124,16 +107,16 @@ abstract class AbstractServerManager<TServer, TUniverse>(private val networkMana
 		}
 	}
 
-	override fun watch(request: IBouncerServerWatchRequest): IBouncerServerWatcher
+	override fun watch(request: IDistributedServerWatchRequest): IDistributedServerWatcher
 	{
-		fun createFilter(filter: IBouncerServerFilter): ServerFilter
+		fun createFilter(filter: IDistributedServerFilter): ServerFilter
 		{
-			fun unwrap(filter: IBouncerServerFilter, builder: ServerFilter.Builder)
+			fun unwrap(filter: IDistributedServerFilter, builder: ServerFilter.Builder)
 			{
 				when (filter)
 				{
-					is IBouncerServerFilter.IGroup -> builder.group = group { this.value = filter.group }
-					is IBouncerServerFilter.INot ->
+					is IDistributedServerFilter.IGroup -> builder.group = group { this.value = filter.group }
+					is IDistributedServerFilter.INot ->
 					{
 						builder.inverse = !builder.inverse
 
@@ -153,9 +136,11 @@ abstract class AbstractServerManager<TServer, TUniverse>(private val networkMana
 		watcher.start(
 			bouncerWatchRequest()
 			{
-				this.server = server {
+				this.server = server()
+				{
 					request.filter.forEach { f -> this.filter.add(createFilter(f)) }
 				}
+				this.universe = universe { }
 			})
 
 		return watcher
@@ -165,8 +150,6 @@ abstract class AbstractServerManager<TServer, TUniverse>(private val networkMana
 	{
 		synchronized(this.startSessionSignal)
 		{
-			this.defaultServer = null
-
 			this.startSessionSignal.getAndSet(Job())
 			this.servers.clear()
 

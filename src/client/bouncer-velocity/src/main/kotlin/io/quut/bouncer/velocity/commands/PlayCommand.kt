@@ -5,18 +5,26 @@ import com.mojang.brigadier.Command
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.velocitypowered.api.command.BrigadierCommand
 import com.velocitypowered.api.proxy.Player
+import io.quut.bouncer.api.universe.supervisor.IDistributedUniverseSupervisor
+import io.quut.bouncer.api.universe.supervisor.IDistributedUniverseSupervisorProvider
 import io.quut.bouncer.grpc.BouncerGrpcKt
 import io.quut.bouncer.grpc.JoinUniverseResponse
 import io.quut.bouncer.grpc.joinUniverseRequest
 import io.quut.bouncer.velocity.extensions.toByteArray
 import io.quut.bouncer.velocity.listeners.ServerLoginPluginListener
 import io.quut.bouncer.velocity.server.DynamicServerEventHandler
+import io.quut.fusion.velocity.connection.VelocityConnectionRequestTemplate
+import io.quut.fusion.velocity.player.VelocityFusionPlayer
 import kotlinx.coroutines.runBlocking
+import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import java.util.ServiceLoader
 
 internal object PlayCommand
 {
+	private val supervisors: Map<Key, IDistributedUniverseSupervisor> = this.resolveSupervisors()
+
 	fun createPlayCommand(stub: BouncerGrpcKt.BouncerCoroutineStub, servers: DynamicServerEventHandler, listener: ServerLoginPluginListener): BrigadierCommand
 	{
 		return BrigadierCommand(
@@ -25,7 +33,7 @@ internal object PlayCommand
 					BrigadierCommand.requiredArgumentBuilder("type", StringArgumentType.string())
 						.executes()
 						{ context ->
-							val player: Player = context.source as Player? ?: return@executes 0
+							val player: Player = context.source as? Player ?: return@executes 0
 
 							val type: String = context.getArgument("type", String::class.java)
 
@@ -42,13 +50,16 @@ internal object PlayCommand
 
 								if (response.statusCase == JoinUniverseResponse.StatusCase.SUCCESS)
 								{
-									player.sendMessage(Component.text("Sending to server ${response.success.serverId}", NamedTextColor.GRAY))
-
-									servers[response.success.serverId]?.let()
+									servers.getServer(response.success.serverId)?.let()
 									{ server ->
-										listener.addConnection(player, response.success.reservationId)
+										servers.getUniverse(response.success.universeId)?.let()
+										{ (_, supervisor) ->
+											player.sendMessage(Component.text("Sending to server ${response.success.serverId}, universe ${response.success.universeId} with supervisor ${supervisor.type}", NamedTextColor.GRAY))
 
-										player.createConnectionRequest(server).fireAndForget()
+											this@PlayCommand.supervisors[supervisor.type]?.join(VelocityFusionPlayer(player), VelocityConnectionRequestTemplate(server, null), supervisor)
+
+											listener.addConnection(player, response.success.reservationId)
+										}
 									}
 								}
 								else
@@ -60,5 +71,14 @@ internal object PlayCommand
 							return@executes Command.SINGLE_SUCCESS
 						})
 		)
+	}
+
+	private fun resolveSupervisors(): Map<Key, IDistributedUniverseSupervisor>
+	{
+		val map: MutableMap<Key, IDistributedUniverseSupervisor> = hashMapOf()
+
+		ServiceLoader.load(IDistributedUniverseSupervisorProvider::class.java).forEach { e -> e.provide(map::put) }
+
+		return map.toMap()
 	}
 }

@@ -19,6 +19,7 @@ dependencies {
 
 	api(libs.ptotobuf.kotlin)
 	api(libs.grpc.protobuf)
+	api(libs.grpc.stub)
 	api(libs.grpc.kotlin.stub)
 
 	runtimeOnly(libs.grpc.netty) {

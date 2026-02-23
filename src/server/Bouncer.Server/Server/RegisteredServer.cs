@@ -1,12 +1,13 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Runtime.InteropServices;
 using Bouncer.Grpc;
 using Bouncer.Server.Logging;
 using Bouncer.Server.Server.Watch;
 using Bouncer.Server.Session;
+using Bouncer.Server.Universes;
 
 namespace Bouncer.Server.Server;
 
-internal sealed class RegisteredServer : IEquatable<RegisteredServer>
+internal sealed class RegisteredServer : IEquatable<RegisteredServer>, IComparable<RegisteredServer>
 {
 	private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
@@ -15,26 +16,34 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 	private readonly ServerManager serverManager;
 	private readonly BouncerSession session;
 
-	public uint Id { get; }
+	private readonly Lock stateLock;
+
+	public int Id { get; }
 	public string Name { get; } //Immutable, don't use the one from ServerData
 
+	public ServerState State { get; set; }
 	public ServerData Data { get; set; }
 	public ServerStatus Status { get; set; }
 
 	private readonly CancellationTokenSource cancellationTokenSource;
 
-	private readonly ConcurrentDictionary<Guid, long?> players;
+	private readonly Dictionary<Guid, long?> players;
+
+	private readonly HashSet<ServerWatcher> watches;
 
 	internal bool Unregistration { get; private set; }
 
-	internal RegisteredServer(ILogger<RegisteredServer> logger, ServerManager serverManager, BouncerSession session, uint id, ServerData data)
+	internal RegisteredServer(ILogger<RegisteredServer> logger, ServerManager serverManager, BouncerSession session, int id, ServerState state, ServerData data)
 	{
 		this.logger = logger;
 
 		this.serverManager = serverManager;
 		this.session = session;
 
+		this.stateLock = new Lock();
+
 		this.Id = id;
+		this.State = state;
 		this.Name = data.Name;
 
 		this.Data = data;
@@ -42,57 +51,172 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 
 		this.cancellationTokenSource = new CancellationTokenSource();
 
-		this.players = new ConcurrentDictionary<Guid, long?>();
+		this.players = [];
+
+		this.watches = [];
 	}
 
 	internal CancellationToken CancellationToken => this.cancellationTokenSource.Token;
 
+	internal void Update()
+	{
+		this.serverManager.Update(this, this.State.State.Type, this.Players.Count);
+	}
+
+	internal void SetState(ServerState state)
+	{
+		lock (this.stateLock)
+		{
+			this.State = state;
+
+			this.Update();
+
+			lock (this.watches)
+			{
+				foreach (ServerWatcher watcher in this.watches)
+				{
+					watcher.AddUpdate(new BouncerWatchResponse()
+					{
+						Server = new BouncerWatchResponse.Types.Server()
+						{
+							ServerId = this.Id,
+							Update = new ServerUpdate()
+							{
+								State = state,
+							}
+						}
+					});
+				}
+			}
+		}
+	}
+
 	internal void Join(Guid player)
 	{
-		this.players[player] = null;
+		lock (this.stateLock)
+		{
+			ref long? value = ref CollectionsMarshal.GetValueRefOrAddDefault(this.players, player, out bool exists);
+			if (exists && value is not null)
+			{
+				value = null;
+			}
+			else if (!exists)
+			{
+				this.Update();
+			}
+			else
+			{
+				return;
+			}
 
-		this.logger.PlayerJoinServer(player, this.Name, this.Id, this.players.Count);
+			this.logger.PlayerJoinServer(player, this.Name, this.Id, this.players.Count);
+		}
 	}
 
 	internal void Quit(Guid player)
 	{
-		this.players.TryRemove(player, out _);
+		lock (this.stateLock)
+		{
+			if (this.players.Remove(player, out _))
+			{
+				this.Update();
 
-		this.logger.PlayerQuitServer(player, this.Name, this.Id, this.players.Count);
+				this.logger.PlayerQuitServer(player, this.Name, this.Id, this.players.Count);
+			}
+		}
+	}
+
+	internal void RegisterUniverse(RegisteredUniverse universe)
+	{
+		lock (this.watches)
+		{
+			foreach (ServerWatcher watcher in this.watches)
+			{
+				watcher.AddUpdate(new BouncerWatchResponse()
+				{
+					Universe = new BouncerWatchResponse.Types.Universe()
+					{
+						ServerId = this.Id,
+						UniverseId = universe.Id,
+						Add = new BouncerWatchResponse.Types.Universe.Types.Add()
+						{
+							Data = universe.Data,
+							State = universe.State
+						}
+					}
+				});
+			}
+		}
+	}
+
+	internal void UnregisterUniverse(RegisteredUniverse universe)
+	{
+		lock (this.watches)
+		{
+			foreach (ServerWatcher watcher in this.watches)
+			{
+				watcher.AddUpdate(new BouncerWatchResponse()
+				{
+					Universe = new BouncerWatchResponse.Types.Universe()
+					{
+						ServerId = this.Id,
+						UniverseId = universe.Id,
+						Remove = new BouncerWatchResponse.Types.Universe.Types.Remove()
+					}
+				});
+			}
+		}
 	}
 
 	internal void ReserveSlot(Guid player)
 	{
-		this.players.TryAdd(player, Environment.TickCount64 + (long)RegisteredServer.Timeout.TotalMilliseconds);
+		lock (this.stateLock)
+		{
+			ref long? value = ref CollectionsMarshal.GetValueRefOrAddDefault(this.players, player, out bool exists);
+			value = Environment.TickCount64 + (long)RegisteredServer.Timeout.TotalMilliseconds;
 
-		this.logger.PlayerReserveSlotServer(player, this.Name, this.Id, this.players.Count);
+			if (!exists)
+			{
+				this.Update();
+			}
+
+			this.logger.PlayerReserveSlotServer(player, this.Name, this.Id, this.players.Count);
+		}
 	}
 
 	internal void Cleanup()
 	{
-		long time = Environment.TickCount64;
-
-		//TODO: Maybe optimize this so we only loop reserved slot players, not everyone
-		foreach (KeyValuePair<Guid, long?> kvp in this.players)
+		lock (this.stateLock)
 		{
-			long? timeout = kvp.Value;
-			if (timeout is null || time < timeout)
-			{
-				continue;
-			}
+			long time = Environment.TickCount64;
 
-			//Use KVP so the key and value matches
-			if (!this.players.TryRemove(kvp))
+			//TODO: Maybe optimize this so we only loop reserved slot players, not everyone
+			foreach ((Guid player, long? timeout) in this.players)
 			{
-				continue;
-			}
+				if (timeout is null || time < timeout)
+				{
+					continue;
+				}
 
-			this.logger.PlayerReserveSlotTimeoutServer(kvp.Key, this.Name, this.Id, this.players.Count);
+				if (!this.players.Remove(player))
+				{
+					continue;
+				}
+
+				this.Update();
+
+				this.logger.PlayerReserveSlotTimeoutServer(player, this.Name, this.Id, this.players.Count);
+			}
 		}
 	}
 
 	internal CancellationTokenRegistration AddWatcher(ServerWatcher watcher)
 	{
+		lock (this.watches)
+		{
+			this.watches.Add(watcher);
+		}
+
 		return this.cancellationTokenSource.Token.UnsafeRegister(state =>
 		{
 			((ServerWatcher)state!).RemoveServer(this);
@@ -113,8 +237,11 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>
 
 	public ICollection<Guid> Players => this.players.Keys;
 
-	public override int GetHashCode() => (int)this.Id;
+	public override string ToString() => $"RegisteredServer {this.Id} - {this.Name}";
+	public override int GetHashCode() => this.Id;
 
 	public override bool Equals(object? obj) => obj is RegisteredServer other && this.Equals(other);
 	public bool Equals(RegisteredServer? other) => this.Id == other?.Id;
+
+	public int CompareTo(RegisteredServer? other) => other is null ? 1 : this.Id.CompareTo(other.Id);
 }

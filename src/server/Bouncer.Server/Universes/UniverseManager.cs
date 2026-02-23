@@ -9,17 +9,19 @@ internal sealed class UniverseManager(ServerManager serverManager)
 {
 	private readonly ServerManager serverManager = serverManager;
 
-	private readonly ConcurrentDictionary<uint, RegisteredUniverse> universes = [];
+	private readonly ConcurrentDictionary<int, RegisteredUniverse> universes = [];
 
-	private uint nextId;
+	private int nextId;
 
-	internal RegisteredUniverse Register(BouncerSession session, RegisteredServer server, UniverseData universeData)
+	internal RegisteredUniverse Register(BouncerSession session, RegisteredServer server, UniverseData universeData, State state)
 	{
-		uint id = Interlocked.Increment(ref this.nextId);
+		int id = Interlocked.Increment(ref this.nextId);
 
-		RegisteredUniverse universe = new(session, server, id, universeData);
+		RegisteredUniverse universe = new(session, server, id, universeData, state);
 
 		this.universes[id] = universe;
+
+		server.RegisterUniverse(universe);
 
 		return universe;
 	}
@@ -30,6 +32,8 @@ internal sealed class UniverseManager(ServerManager serverManager)
 		{
 			return;
 		}
+
+		universe.Server.UnregisterUniverse(universe);
 	}
 
 	internal ICollection<RegisteredUniverse> Universes => this.universes.Values;

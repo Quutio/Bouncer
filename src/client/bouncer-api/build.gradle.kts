@@ -7,4 +7,5 @@ version = "1.0-SNAPSHOT"
 
 dependencies {
 	compileOnlyApi(libs.adventure.api)
+	compileOnlyApi(libs.fusion.api)
 }

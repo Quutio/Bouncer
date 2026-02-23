@@ -1,60 +1,41 @@
 package io.quut.bouncer.velocity
 
+import com.google.inject.AbstractModule
 import com.google.inject.Inject
-import com.velocitypowered.api.event.Subscribe
-import com.velocitypowered.api.event.proxy.ProxyInitializeEvent
-import com.velocitypowered.api.event.proxy.ProxyShutdownEvent
+import com.google.inject.Injector
+import com.google.inject.Scopes
+import com.velocitypowered.api.event.EventManager
 import com.velocitypowered.api.plugin.Plugin
-import com.velocitypowered.api.proxy.ProxyServer
-import io.quut.bouncer.api.server.IBouncerServerFilter
-import io.quut.bouncer.api.server.IBouncerServerWatchRequest
-import io.quut.bouncer.api.server.IBouncerServerWatcher
+import com.velocitypowered.api.plugin.PluginContainer
 import io.quut.bouncer.common.network.NetworkManager
 import io.quut.bouncer.common.user.UserManager
-import io.quut.bouncer.velocity.commands.PlayCommand
-import io.quut.bouncer.velocity.listeners.PlayerListener
-import io.quut.bouncer.velocity.listeners.ServerLoginPluginListener
 import io.quut.bouncer.velocity.server.DynamicServerEventHandler
-import io.quut.bouncer.velocity.server.VelocityBouncerServerManager
-import org.slf4j.Logger
+import io.quut.bouncer.velocity.server.VelocityDistributedServerManager
 
 @Plugin(id = "bouncer", name = "Bouncer", version = "1.0", url = "https://quut.io", authors = [ "Joni Aromaa (isokissa3)", "Ossi Erkkilä (avaruus1)" ])
-class VelocityBouncerPluginLoader @Inject constructor(private val logger: Logger, private val proxy: ProxyServer)
+class VelocityBouncerPluginLoader @Inject internal constructor(
+	private val injector: Injector,
+	private val container: PluginContainer,
+	private val eventManager: EventManager)
 {
-	private val networkManager: NetworkManager = NetworkManager()
-	private val userManager: UserManager = UserManager()
-	private val serverManager: VelocityBouncerServerManager = VelocityBouncerServerManager(this.networkManager, this.userManager)
-	private val bouncer: VelocityBouncerPlugin = VelocityBouncerPlugin(this, this.proxy, this.networkManager, this.serverManager)
+	private val boostrap: VelocityBouncerPluginBootstrap = this.injector.createChildInjector(Module())
+		.getInstance(VelocityBouncerPluginBootstrap::class.java)
 
-	private val dynamicServers: DynamicServerEventHandler = DynamicServerEventHandler(this.logger, this.proxy)
-
-	private lateinit var serverWatcher: IBouncerServerWatcher
-
-	@Subscribe
-	fun onProxyInitialize(event: ProxyInitializeEvent)
+	init
 	{
-		this.bouncer.load()
-		this.bouncer.enable(this.proxy.boundAddress)
-
-		val loginPluginListener = ServerLoginPluginListener()
-
-		this.proxy.commandManager.register(
-			this.proxy.commandManager.metaBuilder("play")
-				.plugin(this)
-				.build(),
-			PlayCommand.createPlayCommand(this.networkManager.stub, this.dynamicServers, loginPluginListener))
-
-		this.proxy.eventManager.register(this, PlayerListener(this.networkManager, this.dynamicServers))
-		this.proxy.eventManager.register(this, loginPluginListener)
-
-		this.serverWatcher = this.bouncer.serverManager.watch(IBouncerServerWatchRequest.of(this.dynamicServers, IBouncerServerFilter.IGroup.of("proxy").not()))
+		this.eventManager.register(this.container, this.boostrap)
 	}
 
-	@Subscribe
-	fun onProxyShutdown(event: ProxyShutdownEvent)
+	private class Module : AbstractModule()
 	{
-		this.serverWatcher.close()
-
-		this.bouncer.shutdownNow()
+		override fun configure()
+		{
+			this.bind(NetworkManager::class.java).`in`(Scopes.SINGLETON)
+			this.bind(UserManager::class.java).`in`(Scopes.SINGLETON)
+			this.bind(VelocityDistributedServerManager::class.java).`in`(Scopes.SINGLETON)
+			this.bind(VelocityBouncerPlugin::class.java).`in`(Scopes.SINGLETON)
+			this.bind(VelocityBouncerDefaultServer::class.java).`in`(Scopes.SINGLETON)
+			this.bind(DynamicServerEventHandler::class.java).`in`(Scopes.SINGLETON)
+		}
 	}
 }

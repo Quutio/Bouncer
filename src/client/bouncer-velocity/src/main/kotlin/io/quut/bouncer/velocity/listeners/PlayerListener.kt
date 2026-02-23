@@ -170,7 +170,7 @@ internal class PlayerListener(private val networkManager: NetworkManager, privat
 		val response: ServerJoinResponse = this.networkManager.stub.joinServer(builder.build())
 		return when (response.statusCase)
 		{
-			StatusCase.SUCCESS -> this.dynamicServers[response.success.serverId]
+			StatusCase.SUCCESS -> this.dynamicServers.getServer(response.success.serverId)
 			else -> null
 		}
 	}

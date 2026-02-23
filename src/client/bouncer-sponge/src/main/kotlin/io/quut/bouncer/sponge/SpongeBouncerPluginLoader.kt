@@ -2,54 +2,45 @@ package io.quut.bouncer.sponge
 
 import com.google.inject.AbstractModule
 import com.google.inject.Inject
-import com.google.inject.Singleton
+import com.google.inject.Injector
+import com.google.inject.PrivateModule
+import com.google.inject.Scopes
 import com.google.inject.multibindings.Multibinder
+import com.google.inject.name.Names
 import io.quut.bouncer.api.IBouncer
-import io.quut.bouncer.api.server.IBouncerServerManager
-import io.quut.bouncer.common.helpers.ServerInfoHelpers
+import io.quut.bouncer.api.server.IDistributedServerManager
 import io.quut.bouncer.common.network.NetworkManager
 import io.quut.bouncer.sponge.listeners.CommandListener
 import io.quut.bouncer.sponge.listeners.ConnectionListener
 import io.quut.bouncer.sponge.listeners.IBouncerListener
-import io.quut.bouncer.sponge.server.SpongeBouncerServerManager
+import io.quut.bouncer.sponge.server.SpongeDistributedServerManager
 import io.quut.bouncer.sponge.user.SpongeUserManager
 import io.quut.bouncer.sponge.utils.Const
-import org.spongepowered.api.Game
 import org.spongepowered.api.Server
-import org.spongepowered.api.config.DefaultConfig
-import org.spongepowered.api.event.EventManager
 import org.spongepowered.api.event.Listener
 import org.spongepowered.api.event.Order
 import org.spongepowered.api.event.lifecycle.ConstructPluginEvent
 import org.spongepowered.api.event.lifecycle.RegisterChannelEvent
 import org.spongepowered.api.event.lifecycle.StartedEngineEvent
+import org.spongepowered.api.event.lifecycle.StartingEngineEvent
 import org.spongepowered.api.event.lifecycle.StoppedGameEvent
 import org.spongepowered.api.event.lifecycle.StoppingEngineEvent
 import org.spongepowered.api.network.channel.raw.RawDataChannel
-import org.spongepowered.configurate.CommentedConfigurationNode
-import org.spongepowered.configurate.loader.ConfigurationLoader
-import org.spongepowered.plugin.PluginContainer
 import org.spongepowered.plugin.builtin.jvm.Plugin
-import java.lang.invoke.MethodHandles
-import java.net.InetSocketAddress
 
 @Plugin(Const.NAMESPACE)
 class SpongeBouncerPluginLoader @Inject internal constructor(
-	override val container: PluginContainer,
-	@param: DefaultConfig(sharedRoot = false) override val configLoader: ConfigurationLoader<CommentedConfigurationNode>,
-	private val game: Game,
-	private val eventManager: EventManager,
-	private val bouncer: SpongeBouncerPlugin,
-	private val listeners: Set<IBouncerListener>) : ISpongeBouncerPlugin
+	private val injector: Injector,
+	private val plugin: SpongeBouncerPlugin)
 {
-	override val lookup: MethodHandles.Lookup = MethodHandles.lookup()
+	private lateinit var loginChannel: RawDataChannel
 
-	override lateinit var loginChannel: RawDataChannel
+	private var defaultServer: SpongeBouncerDefaultServer? = null
 
 	@Listener
 	private fun onConstructPlugin(event: ConstructPluginEvent)
 	{
-		this.bouncer.load()
+		this.plugin.load()
 	}
 
 	@Listener
@@ -59,49 +50,69 @@ class SpongeBouncerPluginLoader @Inject internal constructor(
 	}
 
 	@Listener(order = Order.PRE)
+	private fun onStartingEngineServer(event: StartingEngineEvent<Server>)
+	{
+		val injector: Injector = this.injector.createChildInjector(ServerModule(event.engine(), this.loginChannel))
+
+		val defaultServer: SpongeBouncerDefaultServer = injector.getInstance(SpongeBouncerDefaultServer::class.java)
+		defaultServer.load()
+
+		this.defaultServer = defaultServer
+	}
+
+	@Listener(order = Order.POST)
 	private fun onStartedEngineServer(event: StartedEngineEvent<Server>)
 	{
-		val address: InetSocketAddress = this.game.server().boundAddress().get()
-
-		this.bouncer.enable(InetSocketAddress.createUnresolved(ServerInfoHelpers.resolveHostAddress(address.hostString), address.port))
-
-		this.listeners.forEach { listener -> this.eventManager.registerListeners(this.container, listener, this.lookup) }
+		this.defaultServer?.enable()
 	}
 
 	@Listener
 	private fun onStoppingEngineServer(event: StoppingEngineEvent<Server>)
 	{
-		this.eventManager.unregisterListeners(this.container)
-
-		if (this.game.isClientAvailable)
-		{
-			this.bouncer.disable()
-		}
+		this.defaultServer?.disable()
+		this.defaultServer = null
 	}
 
 	@Listener(order = Order.POST)
 	private fun onStoppedGame(event: StoppedGameEvent)
 	{
-		this.bouncer.shutdownNow()
+		this.plugin.shutdownNow()
 	}
 
-	class Module : AbstractModule()
+	class Module : PrivateModule()
 	{
 		override fun configure()
 		{
-			this.bind(ISpongeBouncerPlugin::class.java).to(SpongeBouncerPluginLoader::class.java)
-			this.bind(SpongeBouncerPlugin::class.java).`in`(Singleton::class.java)
-			this.bind(SpongeBouncerServerManager::class.java).`in`(Singleton::class.java)
-			this.bind(NetworkManager::class.java).`in`(Singleton::class.java)
-			this.bind(SpongeUserManager::class.java).`in`(Singleton::class.java)
+			this.bind(SpongeBouncerPluginInfo::class.java).`in`(Scopes.SINGLETON)
+			this.bind(SpongeBouncerPlugin::class.java).`in`(Scopes.SINGLETON)
+			this.bind(SpongeDistributedServerManager::class.java).`in`(Scopes.SINGLETON)
+			this.bind(NetworkManager::class.java).`in`(Scopes.SINGLETON)
+			this.bind(SpongeUserManager::class.java).`in`(Scopes.SINGLETON)
+
+			// Public APIs
+			this.bind(IBouncer::class.java).to(SpongeBouncerPlugin::class.java)
+			this.bind(IDistributedServerManager::class.java).to(SpongeDistributedServerManager::class.java)
+
+			this.expose(IBouncer::class.java)
+			this.expose(IDistributedServerManager::class.java)
+		}
+	}
+
+	private class ServerModule(private val server: Server, private val loginChannel: RawDataChannel) : AbstractModule()
+	{
+		override fun configure()
+		{
+			this.bind(Server::class.java).toInstance(this.server)
+
+			this.bind(RawDataChannel::class.java)
+				.annotatedWith(Names.named(Const.LOGIN_CHANNEL))
+				.toInstance(this.loginChannel)
+
+			this.bind(SpongeBouncerDefaultServer::class.java).`in`(Scopes.SINGLETON)
 
 			val listeners: Multibinder<IBouncerListener> = Multibinder.newSetBinder(this.binder(), IBouncerListener::class.java)
 			listeners.addBinding().to(ConnectionListener::class.java)
 			listeners.addBinding().to(CommandListener::class.java)
-
-			// Public APIs
-			this.bind(IBouncer::class.java).to(SpongeBouncerPlugin::class.java)
-			this.bind(IBouncerServerManager::class.java).to(SpongeBouncerServerManager::class.java)
 		}
 	}
 }

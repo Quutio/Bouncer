@@ -34,10 +34,11 @@ internal sealed class ServerWatcher
 		{
 			Server = new BouncerWatchResponse.Types.Server
 			{
-				ServerId = (int)server.Id,
+				ServerId = server.Id,
 				Add = new BouncerWatchResponse.Types.Server.Types.Add
 				{
-					Data = server.Data
+					Data = server.Data,
+					State = server.State
 				}
 			}
 		});
@@ -52,7 +53,7 @@ internal sealed class ServerWatcher
 		{
 			Server = new BouncerWatchResponse.Types.Server
 			{
-				ServerId = (int)server.Id,
+				ServerId = server.Id,
 				Remove = new BouncerWatchResponse.Types.Server.Types.Remove
 				{
 					Reason = server.Unregistration ? ServerRemovelReason.Unregistration : ServerRemovelReason.Unspecified

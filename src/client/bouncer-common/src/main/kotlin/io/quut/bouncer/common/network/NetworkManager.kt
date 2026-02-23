@@ -21,9 +21,4 @@ class NetworkManager
 		this.channel.shutdown().awaitTermination(5, TimeUnit.SECONDS)
 		this.channel.shutdownNow()
 	}
-
-	fun shutdownNow()
-	{
-		this.channel.shutdownNow()
-	}
 }

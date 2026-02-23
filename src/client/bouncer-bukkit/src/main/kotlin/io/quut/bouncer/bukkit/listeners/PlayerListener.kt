@@ -1,6 +1,6 @@
 package io.quut.bouncer.bukkit.listeners
 
-import io.quut.bouncer.api.server.IBouncerServer
+import io.quut.bouncer.api.server.IDistributedServer
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -8,7 +8,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 
-internal class PlayerListener(private val bouncerServer: IBouncerServer) : Listener
+internal class PlayerListener(private val bouncerServer: IDistributedServer) : Listener
 {
 	@EventHandler(priority = EventPriority.MONITOR)
 	fun onPlayerJoin(event: PlayerJoinEvent)

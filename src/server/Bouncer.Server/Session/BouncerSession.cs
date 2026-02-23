@@ -59,7 +59,7 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 
 			case ClientSessionMessage.MessageOneofCase.RegisterServerRequest:
 			{
-				RegisteredServer server = this.serverManager.Register(this, request.RegisterServerRequest.Data, request.RegisterServerRequest.Status);
+				RegisteredServer server = this.serverManager.Register(this, request.RegisterServerRequest.State, request.RegisterServerRequest.Data, request.RegisterServerRequest.Status, request.RegisterServerRequest.Players);
 
 				this.serversByTrackingId[request.RegisterServerRequest.TrackingId] = server;
 
@@ -67,19 +67,19 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 				{
 					RegisterServerResponse = new ServerSessionMessage.Types.ServerRegistrationResponse
 					{
-						ServerId = (int)server.Id
+						ServerId = server.Id
 					}
 				};
 
 				foreach (ClientSessionMessage.Types.UniverseRegistration universeRegistration in request.RegisterServerRequest.Universes)
 				{
-					RegisteredUniverse universe = this.universeManager.Register(this, server, universeRegistration.Data);
+					RegisteredUniverse universe = this.universeManager.Register(this, server, universeRegistration.Data, universeRegistration.State);
 
 					this.universesByTrackingId[universeRegistration.TrackingId] = universe;
 
 					response.RegisterServerResponse.Universes.Add(new ServerSessionMessage.Types.UniverseRegistrationResponse
 					{
-						UniverseId = (int)universe.Id
+						UniverseId = universe.Id
 					});
 				}
 
@@ -105,7 +105,7 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 					break;
 				}
 
-				this.Update(server, request.UpdateServerRequest.Status);
+				this.Update(server, request.UpdateServerRequest.Update);
 
 				break;
 			}
@@ -117,7 +117,7 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 					break;
 				}
 
-				RegisteredUniverse universe = this.universeManager.Register(this, server, request.RegisterUniverseRequest.Registration.Data);
+				RegisteredUniverse universe = this.universeManager.Register(this, server, request.RegisterUniverseRequest.Registration.Data, request.RegisterUniverseRequest.Registration.State);
 
 				this.universesByTrackingId[request.RegisterUniverseRequest.Registration.TrackingId] = universe;
 
@@ -125,7 +125,7 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 				{
 					RegisterUniverseResponse = new ServerSessionMessage.Types.UniverseRegistrationResponse
 					{
-						UniverseId = (int)universe.Id
+						UniverseId = universe.Id
 					}
 				};
 
@@ -165,7 +165,7 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 		return true;
 	}
 
-	private void Update(RegisteredServer server, ServerStatusUpdate update)
+	private void Update(RegisteredServer server, ServerUpdate update)
 	{
 		foreach (ByteString player in update.PlayersJoined)
 		{
@@ -177,14 +177,22 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 			server.Quit(new Guid(player.Span, bigEndian: true));
 		}
 
-		if (update.HasTps)
+		if (update.State is not null)
 		{
-			server.Status.Tps = update.Tps;
+			server.SetState(update.State);
 		}
 
-		if (update.HasMemory)
+		if (update.Status is { } status)
 		{
-			server.Status.Memory = update.Memory;
+			if (status.HasTps)
+			{
+				server.Status.Tps = status.Tps;
+			}
+
+			if (status.HasMemory)
+			{
+				server.Status.Memory = status.Memory;
+			}
 		}
 	}
 

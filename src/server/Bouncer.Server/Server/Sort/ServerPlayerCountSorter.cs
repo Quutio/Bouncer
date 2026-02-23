@@ -11,6 +11,8 @@ internal sealed class ServerPlayerCountSorter : IServerSort
 		this.order = order;
 	}
 
+	internal bool Ascending => this.order == ServerSort.Types.ByPlayerCount.Types.Order.Ascending;
+
 	public int Compare(RegisteredServer? x, RegisteredServer? y)
 	{
 		int xCount = x?.Players.Count ?? 0;

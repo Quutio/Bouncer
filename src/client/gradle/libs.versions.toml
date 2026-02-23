@@ -1,13 +1,14 @@
 [versions]
 kotlin = "2.3.0"
 kotlinx = "1.8.1"
-ptotobuf = "4.27.0"
-grpc-protobuf = "1.64.0"
-grpc-kotlin = "1.4.1"
+ptotobuf = "4.33.4"
+grpc-protobuf = "1.78.0"
+grpc-kotlin = "1.5.0"
 velocity = "3.3.0-SNAPSHOT"
 shadow = "8.1.7"
 adventure = "4.17.0"
 caffeine = "3.1.8"
+fusion = "1.0-SNAPSHOT"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin" }
@@ -17,11 +18,14 @@ ptotobuf-protoc = { module = "com.google.protobuf:protoc", version.ref = "ptotob
 grpc-plugin = { module = "io.grpc:protoc-gen-grpc-java", version.ref = "grpc-protobuf" }
 grpc-protobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc-protobuf" }
 grpc-netty = { module = "io.grpc:grpc-netty", version.ref = "grpc-protobuf" }
+grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "grpc-protobuf" }
 grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
 grpc-kotlin-plugin = { module = "io.grpc:protoc-gen-grpc-kotlin", version.ref = "grpc-kotlin" }
 velocity = { module = "com.velocitypowered:velocity-api", version.ref = "velocity" }
 adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
+fusion-api = { module = "io.quut:fusion-api", version.ref = "fusion" }
+fusion-velocity = { module = "io.quut:fusion-velocity", version.ref = "fusion" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

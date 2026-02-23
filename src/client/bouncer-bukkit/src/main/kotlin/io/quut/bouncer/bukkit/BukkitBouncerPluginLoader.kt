@@ -1,7 +1,7 @@
 package io.quut.bouncer.bukkit
 
 import io.quut.bouncer.bukkit.listeners.CommandListener
-import io.quut.bouncer.bukkit.server.BukkitBouncerServerManager
+import io.quut.bouncer.bukkit.server.BukkitDistributedServerManager
 import io.quut.bouncer.common.helpers.ServerInfoHelpers
 import io.quut.bouncer.common.network.NetworkManager
 import io.quut.bouncer.common.user.UserManager
@@ -12,7 +12,7 @@ class BukkitBouncerPluginLoader : JavaPlugin()
 {
 	private val userManager = UserManager()
 	private val networkManager = NetworkManager()
-	private val bouncer: BukkitBouncerPlugin = BukkitBouncerPlugin(this, this.server, this.dataFolder, this.networkManager, BukkitBouncerServerManager(this.networkManager, this.userManager))
+	private val bouncer: BukkitBouncerPlugin = BukkitBouncerPlugin(this, this.server, this.dataFolder, this.networkManager, BukkitDistributedServerManager(this.networkManager, this.userManager))
 
 	override fun onLoad()
 	{

@@ -21,6 +21,8 @@ dependencies {
 
 	compileOnly(libs.velocity)
 	kapt(libs.velocity)
+
+	compileOnly(libs.fusion.velocity)
 }
 
 kotlin {

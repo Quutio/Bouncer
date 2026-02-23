@@ -7,8 +7,14 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 internal class PluginConfig : IBouncerConfig
 {
 	override var apiUrl: String = "localhost:5000"
-	override var defaultServer: Boolean = true
-	override var name: String = "test"
-	override var group: String = "survival"
-	override var type: String = "vanilla"
+	override var defaultServer: DefaultServer = DefaultServer()
+
+	@ConfigSerializable
+	internal class DefaultServer : IBouncerConfig.IDefaultServer
+	{
+		override var enabled: Boolean = false
+		override var name: String = "test"
+		override var group: String = "survival"
+		override var type: String = "vanilla"
+	}
 }

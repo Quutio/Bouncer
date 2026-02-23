@@ -6,7 +6,9 @@ internal object Const
 {
 	const val NAMESPACE: String = "bouncer"
 
-	val LOGIN_CHANNEL_KEY: ResourceKey = Const.key("login")
+	const val LOGIN_CHANNEL: String = "login"
+
+	val LOGIN_CHANNEL_KEY: ResourceKey = Const.key(Const.LOGIN_CHANNEL)
 
 	fun key(value: String): ResourceKey = ResourceKey.of(Const.NAMESPACE, value)
 }

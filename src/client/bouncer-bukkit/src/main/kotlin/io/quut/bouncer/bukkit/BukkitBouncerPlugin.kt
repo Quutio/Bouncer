@@ -1,12 +1,12 @@
 package io.quut.bouncer.bukkit
 
-import io.quut.bouncer.api.server.IBouncerServer
-import io.quut.bouncer.api.server.IBouncerServerHeartbeat
-import io.quut.bouncer.api.server.IBouncerServerInfo
-import io.quut.bouncer.api.server.IBouncerServerOptions
+import io.quut.bouncer.api.server.IDistributedServer
+import io.quut.bouncer.api.server.IDistributedServerHeartbeat
+import io.quut.bouncer.api.server.IDistributedServerInfo
+import io.quut.bouncer.api.server.IDistributedServerOptions
 import io.quut.bouncer.bukkit.config.PluginConfig
 import io.quut.bouncer.bukkit.listeners.PlayerListener
-import io.quut.bouncer.bukkit.server.BukkitBouncerServerManager
+import io.quut.bouncer.bukkit.server.BukkitDistributedServerManager
 import io.quut.bouncer.common.BouncerPlugin
 import io.quut.bouncer.common.network.NetworkManager
 import ninja.leaping.configurate.ConfigurationNode
@@ -22,7 +22,7 @@ internal class BukkitBouncerPlugin(
 	private val server: Server,
 	private val dataFolder: File,
 	networkManager: NetworkManager,
-	serverManager: BukkitBouncerServerManager) : BouncerPlugin(networkManager, serverManager)
+	serverManager: BukkitDistributedServerManager) : BouncerPlugin(networkManager, serverManager)
 {
 	override lateinit var config: PluginConfig
 
@@ -38,9 +38,9 @@ internal class BukkitBouncerPlugin(
 		this.config = PluginConfig.loadFrom(node)
 	}
 
-	override fun defaultServerOptions(info: IBouncerServerInfo): IBouncerServerOptions = IBouncerServerOptions.of(info)
+	override fun defaultServerOptions(info: IDistributedServerInfo): IDistributedServerOptions = IDistributedServerOptions.of(info)
 
-	override fun defaultServerCreated(server: IBouncerServer)
+	override fun defaultServerCreated(server: IDistributedServer)
 	{
 		for (player: Player in this.server.onlinePlayers)
 		{
@@ -55,7 +55,7 @@ internal class BukkitBouncerPlugin(
 		this.server.scheduler.runTaskTimerAsynchronously(this.plugin, runnable, 20L, 20L)
 	}
 
-	override fun heartbeat(builder: IBouncerServerHeartbeat.IBuilder)
+	override fun heartbeat(builder: IDistributedServerHeartbeat.IBuilder)
 	{
 		builder.tps(this.server.tps[0])
 	}

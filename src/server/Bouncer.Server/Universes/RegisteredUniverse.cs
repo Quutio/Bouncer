@@ -6,21 +6,22 @@ using Google.Protobuf.Collections;
 
 namespace Bouncer.Server.Universes;
 
-internal sealed class RegisteredUniverse(BouncerSession session, RegisteredServer server, uint id, UniverseData universeData)
+internal sealed class RegisteredUniverse(BouncerSession session, RegisteredServer server, int id, UniverseData universeData, State state)
 {
 	private readonly BouncerSession session = session;
 
 	internal RegisteredServer Server { get; } = server;
 
 	public UniverseData Data { get; set; } = universeData;
+	public State State { get; set; } = state;
 
-	internal uint Id { get; } = id;
+	internal int Id { get; } = id;
 
 	public async Task<int?> ReserveSlot(RepeatedField<ByteString> players)
 	{
 		ClientSessionMessage.Types.ReserveResponse response = await this.session.WriteAsync(new ServerSessionMessage.Types.ReserveRequest
 		{
-			UniverseId = (int)this.Id,
+			UniverseId = this.Id,
 			Players = { players }
 		}).ConfigureAwait(false);
 

@@ -1,9 +1,9 @@
 package io.quut.bouncer.api.universe
 
-import io.quut.bouncer.api.unit.IDistributedUnitContainer
-import io.quut.bouncer.api.unit.IDistributedUnitState
+import io.quut.bouncer.api.node.IDistributedNodeContainer
+import io.quut.bouncer.api.node.IDistributedNodeState
 
-interface IDistributedUniverseContainer : IDistributedUnitContainer
+interface IDistributedUniverseContainer : IDistributedNodeContainer
 {
-	override var state: IDistributedUnitState
+	override var state: IDistributedNodeState
 }

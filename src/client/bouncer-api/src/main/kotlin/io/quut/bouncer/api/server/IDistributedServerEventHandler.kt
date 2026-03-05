@@ -1,6 +1,6 @@
 package io.quut.bouncer.api.server
 
-import io.quut.bouncer.api.unit.IDistributedUnitState
+import io.quut.bouncer.api.node.IDistributedNodeState
 import io.quut.bouncer.api.universe.IDistributedUniverseInfo
 import io.quut.bouncer.api.universe.supervisor.instance.IDistributedUniverseSupervisorInstanceInfo
 
@@ -10,9 +10,9 @@ interface IDistributedServerEventHandler
 	fun updateServer(id: Int, info: IDistributedServerInfo, state: IDistributedServerState)
 	fun removeServer(id: Int, info: IDistributedServerInfo, state: IDistributedServerState, reason: RemoveReason)
 
-	fun addUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedUnitState)
-	fun updateUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedUnitState)
-	fun removeUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedUnitState)
+	fun addUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedNodeState)
+	fun updateUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedNodeState)
+	fun removeUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedNodeState)
 
 	enum class RemoveReason
 	{

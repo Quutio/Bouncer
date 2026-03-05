@@ -7,7 +7,7 @@ import com.velocitypowered.api.proxy.server.ServerInfo
 import io.quut.bouncer.api.server.IDistributedServerEventHandler
 import io.quut.bouncer.api.server.IDistributedServerInfo
 import io.quut.bouncer.api.server.IDistributedServerState
-import io.quut.bouncer.api.unit.IDistributedUnitState
+import io.quut.bouncer.api.node.IDistributedNodeState
 import io.quut.bouncer.api.universe.IDistributedUniverseInfo
 import io.quut.bouncer.api.universe.supervisor.instance.IDistributedUniverseSupervisorInstanceInfo
 import org.slf4j.Logger
@@ -16,10 +16,10 @@ import java.net.InetSocketAddress
 internal class DynamicServerEventHandler @Inject constructor(private val logger: Logger, private val proxy: ProxyServer) : IDistributedServerEventHandler
 {
 	private val servers: MutableMap<Int, RegisteredServer> = hashMapOf()
-	private val universes: MutableMap<Int, Triple<IDistributedUniverseInfo, IDistributedUniverseSupervisorInstanceInfo, IDistributedUnitState>> = hashMapOf()
+	private val universes: MutableMap<Int, Triple<IDistributedUniverseInfo, IDistributedUniverseSupervisorInstanceInfo, IDistributedNodeState>> = hashMapOf()
 
 	internal fun getServer(id: Int): RegisteredServer? = this.servers[id]
-	internal fun getUniverse(id: Int): Triple<IDistributedUniverseInfo, IDistributedUniverseSupervisorInstanceInfo, IDistributedUnitState>? = this.universes[id]
+	internal fun getUniverse(id: Int): Triple<IDistributedUniverseInfo, IDistributedUniverseSupervisorInstanceInfo, IDistributedNodeState>? = this.universes[id]
 
 	override fun addServer(id: Int, info: IDistributedServerInfo, state: IDistributedServerState)
 	{
@@ -43,17 +43,17 @@ internal class DynamicServerEventHandler @Inject constructor(private val logger:
 	override fun removeServer(id: Int, info: IDistributedServerInfo, state: IDistributedServerState, reason: IDistributedServerEventHandler.RemoveReason) =
 		this.unregisterServer(id, info, reason)
 
-	override fun addUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedUnitState)
+	override fun addUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedNodeState)
 	{
 		this.universes[id] = Triple(info, supervisor, state)
 	}
 
-	override fun updateUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedUnitState)
+	override fun updateUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedNodeState)
 	{
 		this.universes.computeIfPresent(id) { _, (info, supervisor) -> Triple(info, supervisor, state) }
 	}
 
-	override fun removeUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedUnitState)
+	override fun removeUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedNodeState)
 	{
 		this.universes.remove(id)
 	}

@@ -102,13 +102,13 @@ class SpongeBouncerPluginLoader @Inject internal constructor(
 	{
 		override fun configure()
 		{
+			this.bind(SpongeBouncerDefaultServer::class.java).`in`(Scopes.SINGLETON)
+
 			this.bind(Server::class.java).toInstance(this.server)
 
 			this.bind(RawDataChannel::class.java)
 				.annotatedWith(Names.named(Const.LOGIN_CHANNEL))
 				.toInstance(this.loginChannel)
-
-			this.bind(SpongeBouncerDefaultServer::class.java).`in`(Scopes.SINGLETON)
 
 			val listeners: Multibinder<IBouncerListener> = Multibinder.newSetBinder(this.binder(), IBouncerListener::class.java)
 			listeners.addBinding().to(ConnectionListener::class.java)

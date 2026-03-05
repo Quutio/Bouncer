@@ -1,6 +1,6 @@
 package io.quut.bouncer.common.universe
 
-import io.quut.bouncer.api.unit.IDistributedUnitState
+import io.quut.bouncer.api.node.IDistributedNodeState
 import io.quut.bouncer.api.universe.IDistributedUniverse
 import io.quut.bouncer.api.universe.IDistributedUniverseInfo
 import io.quut.bouncer.api.universe.IDistributedUniverseOptions
@@ -16,7 +16,7 @@ internal class DistributedUniverse(override val server: DistributedServer, inter
 	override val info: IDistributedUniverseInfo
 		get() = this.options.info
 
-	internal var state: IDistributedUnitState = this.options.state
+	internal var state: IDistributedNodeState = this.options.state
 		set(value)
 		{
 			field = value

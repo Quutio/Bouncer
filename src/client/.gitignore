@@ -94,3 +94,4 @@ nb-configuration.xml
 /.apt_generated/
 *.launch
 /.nb-gradle/
+out

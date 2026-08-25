@@ -6,9 +6,8 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 
-internal fun eventTask(fn: suspend () -> Unit): EventTask
-{
-	return EventTask.withContinuation()
+internal fun eventTask(fn: suspend () -> Unit): EventTask =
+	EventTask.withContinuation()
 	{ continuation ->
 		val completion = object : Continuation<Unit>
 		{
@@ -30,4 +29,3 @@ internal fun eventTask(fn: suspend () -> Unit): EventTask
 
 		fn.startCoroutine(completion)
 	}
-}

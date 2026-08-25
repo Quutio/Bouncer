@@ -1,11 +1,11 @@
 package io.quut.bouncer.api.server
 
-import io.quut.bouncer.api.node.IDistributedNodeContainer
+import io.quut.bouncer.api.entity.IDistributedEntityContainer
 import io.quut.bouncer.api.universe.IDistributedUniverseContainer
 import io.quut.bouncer.api.universe.IDistributedUniverseOptions
 import io.quut.bouncer.api.universe.supervisor.instance.IDistributedUniverseSupervisorInstanceOptions
 
-interface IDistributedServerContainer : IDistributedNodeContainer
+interface IDistributedServerContainer : IDistributedEntityContainer
 {
 	val instance: IDistributedServer
 

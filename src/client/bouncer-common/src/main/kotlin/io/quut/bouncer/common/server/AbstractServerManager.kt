@@ -17,14 +17,16 @@ import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.time.delay
+import java.time.Duration
 import java.util.Collections
 import java.util.IdentityHashMap
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-abstract class AbstractServerManager(private val networkManager: NetworkManager, private val userManager: UserManager) : IDistributedServerManager
+abstract class AbstractServerManager(
+	private val networkManager: NetworkManager,
+	private val userManager: UserManager) : IDistributedServerManager
 {
 	private val startSessionSignal: AtomicReference<CompletableJob> = AtomicReference(Job())
 	private var session: ServerManagerSession = ServerManagerSession(this.networkManager, this.userManager)
@@ -65,7 +67,7 @@ abstract class AbstractServerManager(private val networkManager: NetworkManager,
 					}
 				}
 
-				delay(TimeUnit.SECONDS.toMillis(3)) // Wait for 3s before reconnecting
+				delay(Duration.ofSeconds(3)) // Wait for 3s before reconnecting
 			}
 		}
 	}
@@ -133,15 +135,14 @@ abstract class AbstractServerManager(private val networkManager: NetworkManager,
 		}
 
 		val watcher = ServerWatcher(this.networkManager, request.eventHandler)
-		watcher.start(
-			bouncerWatchRequest()
+		watcher.start(bouncerWatchRequest()
+		{
+			this.server = server()
 			{
-				this.server = server()
-				{
-					request.filter.forEach { f -> this.filter.add(createFilter(f)) }
-				}
-				this.universe = universe { }
-			})
+				request.filter.forEach { f -> this.filter.add(createFilter(f)) }
+			}
+			this.universe = universe { }
+		})
 
 		return watcher
 	}

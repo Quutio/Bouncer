@@ -165,6 +165,7 @@ max_line_length = off
 ij_kotlin_allow_trailing_comma = false
 ij_kotlin_allow_trailing_comma_on_call_site = false
 ij_kotlin_packages_to_use_import_on_demand = unset
+ktlint_standard_chain-method-continuation = disabled
 
 [*.kt]
 ktlint_standard_annotation = disabled
@@ -186,4 +187,9 @@ ktlint_standard_trailing-comma-on-declaration-site = disabled
 ktlint_standard_try-catch-finally-spacing = disabled
 ktlint_standard_type-parameter-list-spacing = disabled
 ktlint_standard_unnecessary-parentheses-before-trailing-lambda = disabled
+ktlint_standard_class-signature = disabled
 ktlint_standard_wrapping = disabled
+ktlint_standard_paren-spacing = disabled
+ktlint_standard_chain-wrapping = disabled
+ktlint_standard_blank-line-between-when-conditions = disabled
+ktlint_standard_when-entry-bracing = disabled

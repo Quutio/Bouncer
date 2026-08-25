@@ -39,7 +39,7 @@ internal class SpongeBouncerDefaultServer @Inject constructor(
 			this.installShutdownSignal()
 		}
 
-		this.listeners.forEach { e -> this.eventManager.registerListeners(this.container, e, this.pluginInfo.lookup) }
+		this.listeners.forEach { listener -> this.eventManager.registerListeners(this.container, listener, this.pluginInfo.lookup) }
 
 		this.serverContainer = this.createDefaultServer()
 	}
@@ -55,6 +55,9 @@ internal class SpongeBouncerDefaultServer @Inject constructor(
 	internal fun disable()
 	{
 		this.eventManager.unregisterListeners(this.container)
+
+		this.serverContainer?.close()
+		this.serverContainer = null
 	}
 
 	override fun defaultServerOptions(info: IDistributedServerInfo): IDistributedServerOptions =
@@ -62,7 +65,7 @@ internal class SpongeBouncerDefaultServer @Inject constructor(
 
 	override fun defaultServerCreated(server: IDistributedServerContainer)
 	{
-		this.server.streamOnlinePlayers().forEach { p -> server.confirmJoin(p.uniqueId()) }
+		this.server.streamOnlinePlayers().forEach { player -> server.confirmJoin(player.uniqueId()) }
 
 		this.eventManager.registerListeners(this.container, FallbackServerListener.Accept(server))
 	}

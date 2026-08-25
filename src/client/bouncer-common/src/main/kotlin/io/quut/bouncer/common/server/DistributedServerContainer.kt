@@ -8,7 +8,9 @@ import io.quut.bouncer.api.universe.IDistributedUniverseOptions
 import io.quut.bouncer.api.universe.supervisor.instance.IDistributedUniverseSupervisorInstanceOptions
 import java.util.UUID
 
-internal class DistributedServerContainer(override val instance: DistributedServer, private val closeCallback: (DistributedServer) -> Unit) : IDistributedServerContainer
+internal class DistributedServerContainer(
+	override val instance: DistributedServer,
+	private val closeCallback: (DistributedServer) -> Unit) : IDistributedServerContainer
 {
 	override var state: IDistributedServerState
 		get() = this.instance.state

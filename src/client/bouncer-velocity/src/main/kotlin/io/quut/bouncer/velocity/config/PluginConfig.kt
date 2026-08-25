@@ -1,0 +1,20 @@
+package io.quut.bouncer.velocity.config
+
+import io.quut.bouncer.common.config.IBouncerConfig
+import org.spongepowered.configurate.objectmapping.ConfigSerializable
+
+@ConfigSerializable
+internal class PluginConfig : IBouncerConfig
+{
+	override var apiUrl: String = "localhost:5000"
+	override var defaultServer: DefaultServer = DefaultServer()
+
+	@ConfigSerializable
+	internal class DefaultServer : IBouncerConfig.IDefaultServer
+	{
+		override var enabled: Boolean = false
+		override var name: String = "velocity"
+		override var group: String = "proxy"
+		override var type: String = "proxy"
+	}
+}

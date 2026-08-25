@@ -20,7 +20,7 @@ internal class VelocityBouncerDefaultServer @Inject constructor(
 	plugin: VelocityBouncerPlugin,
 	serverManager: VelocityDistributedServerManager) : BouncerDefaultServer(plugin, serverManager)
 {
-	internal fun enable()
+	internal fun load()
 	{
 		this.createDefaultServer()
 	}

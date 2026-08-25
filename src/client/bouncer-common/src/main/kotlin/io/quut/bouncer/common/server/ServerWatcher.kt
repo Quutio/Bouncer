@@ -1,10 +1,10 @@
 package io.quut.bouncer.common.server
 
+import io.quut.bouncer.api.entity.IDistributedEntityState
 import io.quut.bouncer.api.server.IDistributedServerEventHandler
 import io.quut.bouncer.api.server.IDistributedServerInfo
 import io.quut.bouncer.api.server.IDistributedServerState
 import io.quut.bouncer.api.server.IDistributedServerWatcher
-import io.quut.bouncer.api.node.IDistributedNodeState
 import io.quut.bouncer.api.universe.IDistributedUniverseInfo
 import io.quut.bouncer.api.universe.supervisor.instance.IDistributedUniverseSupervisorInstanceInfo
 import io.quut.bouncer.common.network.NetworkManager
@@ -19,19 +19,22 @@ import io.quut.bouncer.grpc.addressOrNull
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.time.delay
 import net.kyori.adventure.key.Key
 import java.net.InetSocketAddress
+import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 
-internal class ServerWatcher(private val networkManager: NetworkManager, private val eventHandler: IDistributedServerEventHandler) : IDistributedServerWatcher
+internal class ServerWatcher(
+	private val networkManager: NetworkManager,
+	private val eventHandler: IDistributedServerEventHandler) : IDistributedServerWatcher
 {
 	private val servers: ConcurrentMap<Int, Pair<IDistributedServerInfo, IDistributedServerState>> = ConcurrentHashMap()
-	private val universes: ConcurrentMap<Int, Triple<IDistributedUniverseInfo, IDistributedUniverseSupervisorInstanceInfo, IDistributedNodeState>> = ConcurrentHashMap()
+	private val universes: ConcurrentMap<Int, Triple<IDistributedUniverseInfo, IDistributedUniverseSupervisorInstanceInfo, IDistributedEntityState>> = ConcurrentHashMap()
 
 	private lateinit var job: Job
 
@@ -44,7 +47,7 @@ internal class ServerWatcher(private val networkManager: NetworkManager, private
 			{
 				runCatching { this@ServerWatcher.startInternal(request) }
 
-				delay(3333)
+				delay(Duration.ofSeconds(3))
 			}
 		}
 	}
@@ -115,7 +118,7 @@ internal class ServerWatcher(private val networkManager: NetworkManager, private
 			BouncerWatchResponse.Universe.ActionCase.ADD ->
 			{
 				val (info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo) = this.info(response.add.data)
-				val state: IDistributedNodeState = this.state(response.add.state)
+				val state: IDistributedEntityState = this.state(response.add.state)
 
 				this.universes[response.universeId] = Triple(info, supervisor, state)
 
@@ -123,14 +126,14 @@ internal class ServerWatcher(private val networkManager: NetworkManager, private
 			}
 			BouncerWatchResponse.Universe.ActionCase.UPDATE ->
 			{
-				val state: IDistributedNodeState = this.state(response.update.state)
+				val state: IDistributedEntityState = this.state(response.update.state)
 
 				this.universes.computeIfPresent(response.serverId) { _, (info, supervisor) -> Triple(info, supervisor, state) }?.let()
 				{ (info, supervisor, state) -> this.eventHandler.updateUniverse(response.serverId, info, supervisor, state) }
 			}
 			BouncerWatchResponse.Universe.ActionCase.REMOVE ->
 			{
-				val (info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedNodeState) = this.universes.remove(response.universeId) ?: return
+				val (info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedEntityState) = this.universes.remove(response.universeId) ?: return
 
 				this.eventHandler.removeUniverse(response.serverId, info, supervisor, state)
 			}
@@ -151,7 +154,7 @@ internal class ServerWatcher(private val networkManager: NetworkManager, private
 		return IDistributedServerState.of(Key.key(state.state.type), address, state.state.maxPlayers)
 	}
 
-	private fun state(state: State): IDistributedNodeState = IDistributedNodeState.of(Key.key(state.type), state.maxPlayers)
+	private fun state(state: State): IDistributedEntityState = IDistributedEntityState.of(Key.key(state.type), state.maxPlayers)
 
 	override fun close()
 	{

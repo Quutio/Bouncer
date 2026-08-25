@@ -18,14 +18,14 @@ allprojects {
 	spotless {
 		kotlin {
 			ktlint().setEditorConfigPath(rootProject.file("../../.editorconfig"))
-			indentWithTabs()
+			leadingSpacesToTabs()
 			endWithNewline()
 			trimTrailingWhitespace()
 			targetExclude("build/generated/**/*")
 		}
 		kotlinGradle {
 			ktlint().setEditorConfigPath(rootProject.file("../../.editorconfig"))
-			indentWithTabs()
+			leadingSpacesToTabs()
 			endWithNewline()
 			trimTrailingWhitespace()
 		}
@@ -39,8 +39,8 @@ allprojects {
 		val gprPassword: String? by project
 
 		maven {
-			name = "github"
-			url = uri("https://maven.pkg.github.com/quutio/Harmony")
+			name = "github-fusion"
+			url = uri("https://maven.pkg.github.com/Quutio/Fusion")
 			credentials {
 				username = gprUser ?: System.getenv("GITHUB_ACTOR")
 				password = gprPassword ?: System.getenv("GITHUB_TOKEN")
@@ -49,7 +49,7 @@ allprojects {
 	}
 
 	kotlin {
-		jvmToolchain(17)
+		jvmToolchain(21)
 	}
 }
 
@@ -58,7 +58,7 @@ subprojects {
 
 	publishing {
 		publications {
-			register("harmony", MavenPublication::class) {
+			register("bouncer", MavenPublication::class) {
 				from(components["java"])
 
 				this.artifactId = project.name.lowercase()
@@ -68,21 +68,6 @@ subprojects {
 					this.description.set(project.description)
 				}
 			}
-
-			/*val mavenUser: String by project
-			val mavenPassword: String by project
-
-			repositories {
-				maven {
-					credentials {
-						username = mavenUser
-						password = mavenPassword
-					}
-
-					name = "equelix-snapshots"
-					url = uri("https://maven.quut.io/repository/maven-snapshots/")
-				}
-			}*/
 		}
 	}
 }

@@ -6,7 +6,7 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.server.ServerCommandEvent
 
-internal class CommandListener(private val bouncer: BukkitBouncerPlugin) : Listener
+internal class CommandListener(private val plugin: BukkitBouncerPlugin) : Listener
 {
 	@EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
 	fun onServerCommand(event: ServerCommandEvent)
@@ -16,6 +16,6 @@ internal class CommandListener(private val bouncer: BukkitBouncerPlugin) : Liste
 			return
 		}
 
-		this.bouncer.shutdownGracefully()
+		this.plugin.shutdownGracefully()
 	}
 }

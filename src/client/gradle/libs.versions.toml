@@ -1,14 +1,18 @@
 [versions]
-kotlin = "2.3.0"
-kotlinx = "1.8.1"
-ptotobuf = "4.33.4"
-grpc-protobuf = "1.78.0"
+kotlin = "2.4.10"
+kotlinx = "1.11.0"
+ptotobuf = "4.35.1"
+grpc-protobuf = "1.83.1"
 grpc-kotlin = "1.5.0"
-velocity = "3.3.0-SNAPSHOT"
-shadow = "8.1.7"
-adventure = "4.17.0"
-caffeine = "3.1.8"
-fusion = "1.0-SNAPSHOT"
+velocity = "4.1.0-SNAPSHOT"
+shadow = "9.6.1"
+adventure = "5.2.0"
+caffeine = "3.2.4"
+spotless = "8.9.0"
+fusion = "0.1-SNAPSHOT"
+omnivisor = "1.0-SNAPSHOT"
+paper = "1.12.2-R0.1-SNAPSHOT"
+configurate = "4.2.0"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin" }
@@ -25,12 +29,15 @@ velocity = { module = "com.velocitypowered:velocity-api", version.ref = "velocit
 adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 fusion-api = { module = "io.quut:fusion-api", version.ref = "fusion" }
-fusion-velocity = { module = "io.quut:fusion-velocity", version.ref = "fusion" }
+fusion-velocity = { module = "io.quut:fusion-velocity-api", version.ref = "fusion" }
+omnivisor-api = { module = "io.quut:omnivisor-api", version.ref = "omnivisor" }
+paper-api = { module = "com.destroystokyo.paper:paper-api", version.ref = "paper" }
+configurate-yaml = { module = "org.spongepowered:configurate-yaml", version.ref = "configurate" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
-protobuf = { id = "com.google.protobuf", version = "0.9.4" }
-shadow = { id = "io.github.goooler.shadow", version.ref = "shadow" }
-spotless = { id = "com.diffplug.spotless", version = "6.25.0" }
+protobuf = { id = "com.google.protobuf", version = "0.10.0" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 sponge = { id = "org.spongepowered.gradle.plugin", version = "2.3.0" }

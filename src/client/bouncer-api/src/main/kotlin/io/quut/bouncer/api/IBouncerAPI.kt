@@ -2,14 +2,16 @@ package io.quut.bouncer.api
 
 interface IBouncerAPI
 {
+	val bouncer: IBouncer
+
 	companion object
 	{
-		private var instance: IBouncer? = null
+		private var instance: IBouncerAPI? = null
 
 		@JvmStatic
-		fun get(): IBouncer = this.instance ?: throw IllegalStateException("Bouncer is not initialized")
+		fun get(): IBouncerAPI = this.instance ?: throw IllegalStateException("Bouncer is not initialized")
 
-		fun register(instance: IBouncer)
+		fun register(instance: IBouncerAPI)
 		{
 			if (this.instance != null)
 			{
@@ -19,7 +21,7 @@ interface IBouncerAPI
 			this.instance = instance
 		}
 
-		fun unregister(instance: IBouncer)
+		fun unregister(instance: IBouncerAPI)
 		{
 			if (this.instance != instance)
 			{

@@ -1,35 +1,20 @@
 package io.quut.bouncer.bukkit.config
 
 import io.quut.bouncer.common.config.IBouncerConfig
-import ninja.leaping.configurate.ConfigurationNode
-import ninja.leaping.configurate.objectmapping.ObjectMapper
-import ninja.leaping.configurate.objectmapping.Setting
-import ninja.leaping.configurate.objectmapping.serialize.ConfigSerializable
+import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
 @ConfigSerializable
-class PluginConfig : IBouncerConfig
+internal class PluginConfig : IBouncerConfig
 {
-	@Setting("api-url")
-	override lateinit var apiUrl: String
+	override var apiUrl: String = "localhost:5000"
+	override var defaultServer: DefaultServer = DefaultServer()
 
-	override val defaultServer: Boolean
-		get() = true
-
-	@Setting("name")
-	override lateinit var name: String
-
-	@Setting("group")
-	override lateinit var group: String
-
-	@Setting("type")
-	override lateinit var type: String
-
-	companion object
+	@ConfigSerializable
+	internal class DefaultServer : IBouncerConfig.IDefaultServer
 	{
-		@JvmStatic
-		private val MAPPER: ObjectMapper<PluginConfig> = ObjectMapper.forClass(PluginConfig::class.java)
-
-		@JvmStatic
-		fun loadFrom(node: ConfigurationNode): PluginConfig = MAPPER.bindToNew().populate(node)
+		override var enabled: Boolean = false
+		override var name: String = "test"
+		override var group: String = "survival"
+		override var type: String = "vanilla"
 	}
 }

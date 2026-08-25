@@ -1,0 +1,88 @@
+﻿syntax = "proto3";
+
+package quutio.bouncer;
+
+import "scope.proto";
+
+option csharp_namespace = "Bouncer.Grpc";
+option java_package = "io.quut.bouncer.grpc";
+option java_multiple_files = true;
+
+message ServerData {
+	string name = 1;
+	string group = 2;
+	string type = 3;
+}
+
+message ServerState {
+	State state = 1;
+	optional ServerAddress address = 2;
+}
+
+message ServerAddress {
+	string host = 1;
+	int32 port = 2;
+}
+
+message ServerStatus {
+	optional int32 tps = 1;
+	optional int32 memory = 2;
+	optional int32 maxMemory = 3;
+}
+
+message ServerDetails {
+	int32 serverId = 1;
+	ServerData data = 2;
+	ServerStatus status = 3;
+	optional Players players = 4;
+}
+
+message ServerUpdate {
+	repeated bytes playersJoined = 1;
+	repeated bytes playersLeft = 2;
+	optional ServerState state = 3;
+	optional ServerStatus status = 4;
+}
+
+message ServerFilter {
+	bool inverse = 4;
+	oneof condition {
+		Name name = 1;
+		Group group = 2;
+		Type type = 3;
+	}
+
+	message Name {
+		string value = 1;
+	}
+
+	message Group {
+		string value = 1;
+	}
+
+	message Type {
+		string value = 1;
+	}
+}
+
+message ServerSort {
+	oneof sort {
+		ByPlayerCount byPlayerCount = 1;
+	}
+
+	message ByPlayerCount {
+		Order value = 1;
+
+		enum Order {
+			DEFAULT = 0;
+			ASCENDING = 1;
+			DESCENDING = 2;
+		}
+	}
+}
+
+enum ServerRemovelReason {
+	UNSPECIFIED = 0;
+	UNREGISTRATION = 1;
+	TIMEOUT = 2;
+}

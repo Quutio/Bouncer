@@ -1,22 +1,26 @@
 package io.quut.bouncer.common.universe
 
-import io.quut.bouncer.api.node.IDistributedNodeState
+import io.quut.bouncer.api.entity.IDistributedEntityState
 import io.quut.bouncer.api.universe.IDistributedUniverse
 import io.quut.bouncer.api.universe.IDistributedUniverseInfo
 import io.quut.bouncer.api.universe.IDistributedUniverseOptions
 import io.quut.bouncer.api.universe.supervisor.instance.IDistributedUniverseSupervisorInstanceOptions
-import io.quut.bouncer.common.network.RegisteredBouncerUnit
+import io.quut.bouncer.common.network.RegisteredBouncerEntity
 import io.quut.bouncer.common.server.DistributedServer
+import io.quut.bouncer.grpc.ClientSessionMessageKt.universeUpdateRequest
 import io.quut.bouncer.grpc.UniverseUpdate
 import io.quut.bouncer.grpc.state
 import io.quut.bouncer.grpc.universeUpdate
 
-internal class DistributedUniverse(override val server: DistributedServer, internal val options: IDistributedUniverseOptions, internal val supervisor: IDistributedUniverseSupervisorInstanceOptions) : RegisteredBouncerUnit(), IDistributedUniverse
+internal class DistributedUniverse(
+	override val server: DistributedServer,
+	internal val options: IDistributedUniverseOptions,
+	internal val supervisor: IDistributedUniverseSupervisorInstanceOptions) : RegisteredBouncerEntity(), IDistributedUniverse
 {
 	override val info: IDistributedUniverseInfo
 		get() = this.options.info
 
-	internal var state: IDistributedNodeState = this.options.state
+	internal var state: IDistributedEntityState = this.options.state
 		set(value)
 		{
 			field = value
@@ -38,13 +42,11 @@ internal class DistributedUniverse(override val server: DistributedServer, inter
 	{
 		val sessionData: SessionData = this.sessionData ?: return
 
-		/*sessionData.session.sendUpdate(
-			universe()
-			{
-				this.trackingId = sessionData.trackingId
-				this.update = update
-			}
-		)*/
+		sessionData.session.sendUpdate(universeUpdateRequest()
+		{
+			this.trackingId = sessionData.trackingId
+			this.update = update
+		})
 	}
 
 	override fun onUnregistered(sessionData: SessionData)

@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit
 class NetworkManager
 {
 	private lateinit var channel: ManagedChannel
+
 	lateinit var stub: BouncerGrpcKt.BouncerCoroutineStub
 
 	fun connect(endpoint: String)

@@ -14,7 +14,4 @@ fun UUID.toByteArray(): ByteArray
 
 fun ByteString.toUuid(): UUID = this.asReadOnlyByteBuffer().getUuid()
 
-fun ByteBuffer.getUuid(): UUID
-{
-	return UUID(this.getLong(), this.getLong())
-}
+fun ByteBuffer.getUuid(): UUID = UUID(this.getLong(), this.getLong())

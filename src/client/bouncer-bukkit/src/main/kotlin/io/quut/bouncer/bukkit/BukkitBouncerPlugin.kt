@@ -1,67 +1,37 @@
 package io.quut.bouncer.bukkit
 
-import io.quut.bouncer.api.server.IDistributedServer
-import io.quut.bouncer.api.server.IDistributedServerHeartbeat
-import io.quut.bouncer.api.server.IDistributedServerInfo
-import io.quut.bouncer.api.server.IDistributedServerOptions
 import io.quut.bouncer.bukkit.config.PluginConfig
-import io.quut.bouncer.bukkit.listeners.PlayerListener
 import io.quut.bouncer.bukkit.server.BukkitDistributedServerManager
+import io.quut.bouncer.bukkit.universe.BukkitDistributedUniverseManager
 import io.quut.bouncer.common.BouncerPlugin
 import io.quut.bouncer.common.network.NetworkManager
-import ninja.leaping.configurate.ConfigurationNode
-import ninja.leaping.configurate.yaml.YAMLConfigurationLoader
-import org.bukkit.Server
-import org.bukkit.entity.Player
-import org.bukkit.plugin.Plugin
-import org.yaml.snakeyaml.DumperOptions
+import org.spongepowered.configurate.CommentedConfigurationNode
+import org.spongepowered.configurate.loader.ConfigurationLoader
+import org.spongepowered.configurate.yaml.NodeStyle
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.io.File
 
 internal class BukkitBouncerPlugin(
-	private val plugin: Plugin,
-	private val server: Server,
-	private val dataFolder: File,
+	private val dataDirectory: File,
+	override val universeManager: BukkitDistributedUniverseManager,
 	networkManager: NetworkManager,
 	serverManager: BukkitDistributedServerManager) : BouncerPlugin(networkManager, serverManager)
 {
+	private val configLoader: ConfigurationLoader<CommentedConfigurationNode> = YamlConfigurationLoader.builder()
+		.file(this.dataDirectory.resolve("config.yml"))
+		.nodeStyle(NodeStyle.BLOCK)
+		.build()
+
 	override lateinit var config: PluginConfig
 
 	override fun loadConfig()
 	{
-		val loader: YAMLConfigurationLoader = YAMLConfigurationLoader.builder()
-			.setFile(File(this.dataFolder, "config.yml"))
-			.setFlowStyle(DumperOptions.FlowStyle.BLOCK)
-			.build()
+		val node: CommentedConfigurationNode = this.configLoader.load()
 
-		val node: ConfigurationNode = loader.load()
+		this.config = node.require(PluginConfig::class.java)
 
-		this.config = PluginConfig.loadFrom(node)
-	}
+		node.set(this.config)
 
-	override fun defaultServerOptions(info: IDistributedServerInfo): IDistributedServerOptions = IDistributedServerOptions.of(info)
-
-	override fun defaultServerCreated(server: IDistributedServer)
-	{
-		for (player: Player in this.server.onlinePlayers)
-		{
-			server.confirmJoin(player.uniqueId)
-		}
-
-		this.server.pluginManager.registerEvents(PlayerListener(server), this.plugin)
-	}
-
-	override fun installHeartbeat(runnable: Runnable)
-	{
-		this.server.scheduler.runTaskTimerAsynchronously(this.plugin, runnable, 20L, 20L)
-	}
-
-	override fun heartbeat(builder: IDistributedServerHeartbeat.IBuilder)
-	{
-		builder.tps(this.server.tps[0])
-	}
-
-	override fun onShutdownSignal()
-	{
-		this.server.shutdown()
+		this.configLoader.save(node)
 	}
 }

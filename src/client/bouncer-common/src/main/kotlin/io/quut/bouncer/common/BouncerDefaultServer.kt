@@ -8,7 +8,9 @@ import io.quut.bouncer.common.config.IBouncerConfig
 import io.quut.bouncer.common.server.AbstractServerManager
 import sun.misc.Signal
 
-abstract class BouncerDefaultServer(private val plugin: BouncerPlugin, private val serverManager: AbstractServerManager)
+abstract class BouncerDefaultServer(
+	private val plugin: BouncerPlugin,
+	private val serverManager: AbstractServerManager)
 {
 	protected abstract fun defaultServerOptions(info: IDistributedServerInfo): IDistributedServerOptions
 	protected abstract fun defaultServerCreated(server: IDistributedServerContainer)

@@ -34,10 +34,8 @@ internal abstract class BiDirectionalSession<TRequest, TRequestBuilder, TRespons
 		(callback as CompletableDeferred<T>).complete(message)
 	}
 
-	internal fun writeAndForget(request: TRequest): Boolean
-	{
-		return this.outgoingChannel.trySend(request).isSuccess
-	}
+	internal fun writeAndForget(request: TRequest): Boolean =
+		this.outgoingChannel.trySend(request).isSuccess
 
 	protected fun <T> writeAsync(builder: TRequestBuilder): Deferred<T>
 	{

@@ -6,9 +6,6 @@ plugins {
 	alias(libs.plugins.shadow)
 }
 
-group = "io.quut"
-version = "1.0-SNAPSHOT"
-
 repositories {
 	maven {
 		name = "papermc"
@@ -26,7 +23,7 @@ dependencies {
 }
 
 kotlin {
-	jvmToolchain(21)
+	jvmToolchain(25)
 }
 
 tasks {

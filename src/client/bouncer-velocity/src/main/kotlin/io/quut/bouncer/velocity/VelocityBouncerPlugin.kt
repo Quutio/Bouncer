@@ -4,32 +4,27 @@ import com.google.inject.Inject
 import io.quut.bouncer.common.BouncerPlugin
 import io.quut.bouncer.common.config.IBouncerConfig
 import io.quut.bouncer.common.network.NetworkManager
+import io.quut.bouncer.velocity.config.PluginConfig
 import io.quut.bouncer.velocity.server.VelocityDistributedServerManager
+import io.quut.bouncer.velocity.universe.VelocityDistributedUniverseManager
+import org.spongepowered.configurate.CommentedConfigurationNode
 
-internal class VelocityBouncerPlugin @Inject constructor(networkManager: NetworkManager, serverManager: VelocityDistributedServerManager) : BouncerPlugin(networkManager, serverManager)
+internal class VelocityBouncerPlugin @Inject constructor(
+	private val info: VelocityBouncerPluginInfo,
+	override val universeManager: VelocityDistributedUniverseManager,
+	networkManager: NetworkManager,
+	serverManager: VelocityDistributedServerManager) : BouncerPlugin(networkManager, serverManager)
 {
 	override lateinit var config: IBouncerConfig
 
 	override fun loadConfig()
 	{
-		this.config = object : IBouncerConfig
-		{
-			override val apiUrl: String
-				get() = "localhost:5000"
+		val node: CommentedConfigurationNode = this.info.configLoader.load()
 
-			override val defaultServer: IBouncerConfig.IDefaultServer =
-				object : IBouncerConfig.IDefaultServer
-				{
-					override val enabled: Boolean
-						get() = true
+		this.config = node.require(PluginConfig::class.java)
 
-					override val name: String
-						get() = "proxy"
-					override val group: String
-						get() = "proxy"
-					override val type: String
-						get() = "velocity"
-				}
-		}
+		node.set(this.config)
+
+		this.info.configLoader.save(node)
 	}
 }

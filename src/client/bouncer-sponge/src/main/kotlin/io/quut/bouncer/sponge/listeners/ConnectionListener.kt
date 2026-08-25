@@ -11,12 +11,14 @@ import org.spongepowered.api.network.channel.raw.RawDataChannel
 import org.spongepowered.api.profile.GameProfile
 import kotlin.jvm.optionals.getOrNull
 
-internal class ConnectionListener @Inject constructor(@param: Named(Const.LOGIN_CHANNEL) private val loginChannel: RawDataChannel, private val userManager: SpongeUserManager): IBouncerListener
+internal class ConnectionListener @Inject constructor(
+	@param: Named(Const.HANDSHAKE_CHANNEL) private val handshakeChannel: RawDataChannel,
+	private val userManager: SpongeUserManager): IBouncerListener
 {
 	@Listener(order = Order.PRE)
 	private fun onIntent(event: ServerSideConnectionEvent.Handshake)
 	{
-		this.loginChannel.handshake().sendTo(event.connection()) { }.whenComplete()
+		this.handshakeChannel.handshake().sendTo(event.connection()) { }.whenComplete()
 		{ buf, ex ->
 			if (ex == null)
 			{

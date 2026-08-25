@@ -2,7 +2,7 @@ package io.quut.bouncer.common.user
 
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
-import io.quut.bouncer.api.node.IDistributedNode
+import io.quut.bouncer.api.entity.IDistributedEntity
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -15,7 +15,7 @@ open class UserManager
 		.expireAfterWrite(Duration.ofMinutes(1))
 		.build()
 
-	fun createReservation(reservationId: Int, scope: IDistributedNode, players: Set<UUID>)
+	fun createReservation(reservationId: Int, scope: IDistributedEntity, players: Set<UUID>)
 	{
 		this.reservations.put(reservationId, Reservation(scope, players))
 	}
@@ -27,17 +27,11 @@ open class UserManager
 		return userData
 	}
 
-	fun getUser(uniqueId: UUID): UserData?
-	{
-		return this.users[uniqueId]
-	}
+	fun getUser(uniqueId: UUID): UserData? = this.users[uniqueId]
 
-	fun userDisconnected(uniqueId: UUID): UserData?
-	{
-		return this.users.remove(uniqueId)
-	}
+	fun userDisconnected(uniqueId: UUID): UserData? = this.users.remove(uniqueId)
 
-	class Reservation(val scope: IDistributedNode, val players: Set<UUID>)
+	class Reservation(val scope: IDistributedEntity, val players: Set<UUID>)
 	{
 		private val reservationTime: Long = System.nanoTime()
 

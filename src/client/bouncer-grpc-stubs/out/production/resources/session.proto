@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package quutio.bouncer;
+
+import "scope.proto";
+import "servers.proto";
+import "universes.proto";
+import "google/protobuf/duration.proto";
+
+option csharp_namespace = "Bouncer.Grpc";
+option java_package = "io.quut.bouncer.grpc";
+option java_multiple_files = true;
+
+message ClientSessionMessage {
+	optional int32 messageId = 1;
+
+	oneof message {
+		CloseRequest closeRequest = 2;
+		PingRequest pingRequest = 3;
+
+		ServerRegistrationRequest registerServerRequest = 4;
+		ServerUnregistrationRequest unregisterServerRequest = 5;
+		ServerUpdateRequest updateServerRequest = 6;
+
+		UniverseRegistrationRequest registerUniverseRequest = 7;
+		UniverseUnregistrationRequest unregisterUniverseRequest = 8;
+		UniverseUpdateRequest universeUpdateRequest = 9;
+
+		ReserveResponse reserveResponse = 10;
+	}
+
+	message CloseRequest {
+		optional bool intentional = 1;
+	}
+
+	message PingRequest {
+	}
+
+	message ServerRegistrationRequest {
+		int32 trackingId = 1;
+		ServerData data = 2;
+		ServerState state = 3;
+		optional ServerStatus status = 4;
+		repeated bytes players = 5;
+		repeated UniverseRegistration universes = 6;
+	}
+
+	message ServerUnregistrationRequest {
+		int32 trackingId = 1;
+	}
+
+	message ServerUpdateRequest {
+		int32 trackingId = 1;
+		ServerUpdate update = 2;
+	}
+
+	message UniverseRegistrationRequest {
+		int32 serverTrackingId = 1;
+		UniverseRegistration registration = 2;
+	}
+
+	message UniverseRegistration {
+		int32 trackingId = 1;
+		UniverseData data = 2;
+		State state = 3;
+		repeated bytes players = 4;
+	}
+
+	message UniverseUpdateRequest {
+		int32 trackingId = 1;
+		UniverseUpdate update = 2;
+	}
+
+	message UniverseUnregistrationRequest {
+		int32 trackingId = 1;
+	}
+
+	message ReserveResponse {
+		oneof result {
+			Success success = 1;
+		}
+
+		message Success {
+			int32 reservationId = 1;
+		}
+	}
+}
+
+message ServerSessionMessage {
+	optional int32 messageId = 1;
+
+	oneof message {
+		SettingsResponse settingsResponse = 2;
+
+		ServerRegistrationResponse registerServerResponse = 3;
+		UniverseRegistrationResponse registerUniverseResponse = 4;
+
+		ReserveRequest reserveRequest = 5;
+	}
+
+	message SettingsResponse {
+		google.protobuf.Duration pingInterval = 1;
+	}
+
+	message ServerRegistrationResponse {
+		int32 serverId = 1;
+		repeated UniverseRegistrationResponse universes = 2;
+	}
+
+	message UniverseRegistrationResponse {
+		int32 universeId = 1;
+	}
+
+	message ReserveRequest {
+		oneof scope {
+			int32 serverId = 1;
+			int32 universeId = 2;
+		}
+		repeated bytes players = 3;
+	}
+}

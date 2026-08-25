@@ -3,15 +3,13 @@ package io.quut.bouncer.common.network
 import io.quut.bouncer.common.server.ServerManagerSession
 import java.util.concurrent.atomic.AtomicReference
 
-internal abstract class RegisteredBouncerUnit
+internal abstract class RegisteredBouncerEntity
 {
 	private val state: AtomicReference<RegistrationState> = AtomicReference(RegistrationState.NONE)
 
-	@Volatile
-	private var _sessionData: SessionData? = null
-
-	internal val sessionData: SessionData?
-		get() = this._sessionData
+	@field: Volatile
+	internal var sessionData: SessionData? = null
+		private set
 
 	protected abstract val mutex: Any
 
@@ -25,14 +23,14 @@ internal abstract class RegisteredBouncerUnit
 	{
 		synchronized(this.mutex)
 		{
-			this._sessionData = SessionData(session, trackingId)
+			this.sessionData = SessionData(session, trackingId)
 		}
 	}
 
 	internal open fun lostConnection()
 	{
 		this.state.set(RegistrationState.NONE)
-		this._sessionData = null
+		this.sessionData = null
 	}
 
 	internal fun registered(session: ServerManagerSession, scopeId: Int): Boolean
@@ -63,7 +61,7 @@ internal abstract class RegisteredBouncerUnit
 		}
 
 		// If we fail to transition from REGISTERING -> REGISTERED then we were unregistered
-		this._sessionData = null
+		this.sessionData = null
 
 		return false
 	}
@@ -82,7 +80,7 @@ internal abstract class RegisteredBouncerUnit
 
 		val sessionData: SessionData = this.sessionData ?: return
 
-		this._sessionData = null
+		this.sessionData = null
 
 		this.onUnregistered(sessionData)
 	}

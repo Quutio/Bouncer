@@ -8,9 +8,6 @@ plugins {
 	alias(libs.plugins.sponge)
 }
 
-group = "io.quut"
-version = "1.0-SNAPSHOT"
-
 dependencies {
 	implementation(project(":bouncer-common"))
 }
@@ -43,10 +40,6 @@ sponge {
 			optional(false)
 		}
 	}
-}
-
-kotlin {
-	jvmToolchain(21)
 }
 
 tasks.withType<ShadowJar> {

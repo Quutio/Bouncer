@@ -8,9 +8,6 @@ plugins {
 	alias(libs.plugins.protobuf)
 }
 
-group = "io.quut"
-version = "1.0-SNAPSHOT"
-
 dependencies {
 	protobuf(project(":bouncer-protos"))
 

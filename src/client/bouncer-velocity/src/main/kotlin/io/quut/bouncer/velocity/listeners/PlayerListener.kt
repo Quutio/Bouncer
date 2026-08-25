@@ -31,7 +31,9 @@ import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-internal class PlayerListener(private val networkManager: NetworkManager, private val dynamicServers: DynamicServerEventHandler)
+internal class PlayerListener(
+	private val networkManager: NetworkManager,
+	private val dynamicServers: DynamicServerEventHandler)
 {
 	private val cache: Cache<UUID, ConnectionFailure> = CacheBuilder.newBuilder()
 		.expireAfterWrite(5, TimeUnit.MINUTES)
@@ -177,21 +179,19 @@ internal class PlayerListener(private val networkManager: NetworkManager, privat
 
 	private class ConnectionFailure
 	{
-		private val _servers: MutableSet<String> = mutableSetOf()
-
 		private var attemptCount: Int = 0
 
 		val servers: Set<String>
-			get() = this._servers
+			field: MutableSet<String> = mutableSetOf()
 
 		fun add(server: RegisteredServer)
 		{
-			this._servers.add(server.serverInfo.name)
+			servers.add(server.serverInfo.name)
 		}
 
 		fun nextAttempt(): Int
 		{
-			this._servers.clear()
+			servers.clear()
 
 			return ++this.attemptCount
 		}

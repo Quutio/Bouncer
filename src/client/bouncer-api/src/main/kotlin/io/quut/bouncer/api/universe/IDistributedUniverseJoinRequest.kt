@@ -1,6 +1,6 @@
 package io.quut.bouncer.api.universe
 
-import java.security.Key
+import net.kyori.adventure.key.Key
 import java.util.UUID
 
 interface IDistributedUniverseJoinRequest

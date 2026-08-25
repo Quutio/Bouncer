@@ -11,8 +11,9 @@ import io.quut.bouncer.common.network.NetworkManager
 import io.quut.bouncer.common.user.UserManager
 import io.quut.bouncer.velocity.server.DynamicServerEventHandler
 import io.quut.bouncer.velocity.server.VelocityDistributedServerManager
+import io.quut.bouncer.velocity.universe.VelocityDistributedUniverseManager
 
-@Plugin(id = "bouncer", name = "Bouncer", version = "1.0", url = "https://quut.io", authors = [ "Joni Aromaa (isokissa3)", "Ossi Erkkilä (avaruus1)" ])
+@Plugin(id = "bouncer", name = "Bouncer", version = "1.0", url = "https://quut.io", authors = ["Joni Aromaa (isokissa3)", "Ossi Erkkilä (avaruus1)"])
 class VelocityBouncerPluginLoader @Inject internal constructor(
 	private val injector: Injector,
 	private val container: PluginContainer,
@@ -36,6 +37,8 @@ class VelocityBouncerPluginLoader @Inject internal constructor(
 			this.bind(VelocityBouncerPlugin::class.java).`in`(Scopes.SINGLETON)
 			this.bind(VelocityBouncerDefaultServer::class.java).`in`(Scopes.SINGLETON)
 			this.bind(DynamicServerEventHandler::class.java).`in`(Scopes.SINGLETON)
+			this.bind(VelocityBouncerPluginInfo::class.java).`in`(Scopes.SINGLETON)
+			this.bind(VelocityDistributedUniverseManager::class.java).`in`(Scopes.SINGLETON)
 		}
 	}
 }

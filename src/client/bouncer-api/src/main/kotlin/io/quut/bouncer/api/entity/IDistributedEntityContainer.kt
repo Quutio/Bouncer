@@ -1,10 +1,10 @@
-package io.quut.bouncer.api.node
+package io.quut.bouncer.api.entity
 
 import java.util.UUID
 
-interface IDistributedNodeContainer
+interface IDistributedEntityContainer
 {
-	val state: IDistributedNodeState
+	val state: IDistributedEntityState
 
 	fun confirmJoin(uniqueId: UUID)
 	fun confirmLeave(uniqueId: UUID)

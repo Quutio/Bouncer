@@ -15,15 +15,9 @@ internal class DistributedUniverseContainer(
 			this.instance.state = value
 		}
 
-	override fun confirmJoin(uniqueId: UUID)
-	{
-		TODO("Not yet implemented")
-	}
+	override fun confirmJoin(uniqueId: UUID) = this.instance.confirmJoin(uniqueId)
 
-	override fun confirmLeave(uniqueId: UUID)
-	{
-		TODO("Not yet implemented")
-	}
+	override fun confirmLeave(uniqueId: UUID) = this.instance.confirmLeave(uniqueId)
 
 	override fun close()
 	{

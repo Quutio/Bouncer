@@ -47,8 +47,6 @@ internal class DynamicServerEventHandler @Inject constructor(
 
 	override fun addUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedEntityState)
 	{
-		println("Adding universe $id with info $info, supervisor $supervisor, state $state")
-
 		this.universes[id] = Triple(info, supervisor, state)
 	}
 
@@ -59,8 +57,6 @@ internal class DynamicServerEventHandler @Inject constructor(
 
 	override fun removeUniverse(id: Int, info: IDistributedUniverseInfo, supervisor: IDistributedUniverseSupervisorInstanceInfo, state: IDistributedEntityState)
 	{
-		println("Removing universe $id with info $info, supervisor $supervisor, state $state")
-
 		this.universes.remove(id)
 	}
 

@@ -15,20 +15,31 @@ internal abstract class BiDirectionalConnection<TRequest, TResponse>(IAsyncStrea
 	});
 
 	private int nextMessageIdRequestId;
-	private readonly ConcurrentDictionary<int, object> messageCallbacks = [];
+	private readonly ConcurrentDictionary<int, ResponseCallback> messageCallbacks = [];
 
 	internal virtual async Task StartAsync(CancellationToken cancellationToken = default)
 	{
-		_ = this.SendOutgoingMessages(cancellationToken);
-
-		while (await this.requestStream.MoveNext(cancellationToken).ConfigureAwait(false))
+		try
 		{
-			if (await this.HandleAsync(this.requestStream.Current).ConfigureAwait(false))
-			{
-				continue;
-			}
+			_ = this.SendOutgoingMessages(cancellationToken);
 
-			return;
+			while (await this.requestStream.MoveNext(cancellationToken).ConfigureAwait(false))
+			{
+				if (await this.HandleAsync(this.requestStream.Current).ConfigureAwait(false))
+				{
+					continue;
+				}
+
+				return;
+			}
+		}
+		catch (Exception e)
+		{
+			this.Complete(e);
+		}
+		finally
+		{
+			this.Complete();
 		}
 	}
 
@@ -47,7 +58,7 @@ internal abstract class BiDirectionalConnection<TRequest, TResponse>(IAsyncStrea
 
 		TaskCompletionSource<TResponseRequest> taskCompletionSource = new();
 
-		this.messageCallbacks[messageId] = taskCompletionSource;
+		this.messageCallbacks[messageId] = new ResponseCallback<TResponseRequest>(taskCompletionSource);
 
 		await this.outgoingChannel.Writer.WriteAsync(response).ConfigureAwait(false);
 
@@ -58,23 +69,68 @@ internal abstract class BiDirectionalConnection<TRequest, TResponse>(IAsyncStrea
 
 	protected void ReceivedResponseRequest<TResponseRequest>(int messageId, TResponseRequest responseRequest)
 	{
-		((TaskCompletionSource<TResponseRequest>)this.messageCallbacks[messageId]).SetResult(responseRequest);
+		((ResponseCallback<TResponseRequest>)this.messageCallbacks[messageId]).SetResult(responseRequest);
 	}
 
 	private async Task SendOutgoingMessages(CancellationToken cancellationToken = default)
 	{
-		ChannelReader<TResponse> reader = this.outgoingChannel.Reader;
-
-		while (!cancellationToken.IsCancellationRequested)
+		try
 		{
-			if (!reader.TryRead(out TResponse? response))
+			ChannelReader<TResponse> reader = this.outgoingChannel.Reader;
+
+			while (!cancellationToken.IsCancellationRequested)
 			{
-				await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false);
+				if (!reader.TryRead(out TResponse? response))
+				{
+					await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false);
 
-				continue;
+					continue;
+				}
+
+				await this.responseStream.WriteAsync(response, cancellationToken).ConfigureAwait(false);
 			}
-
-			await this.responseStream.WriteAsync(response, cancellationToken).ConfigureAwait(false);
 		}
+		catch (Exception e)
+		{
+			this.Complete(e);
+		}
+	}
+
+	private void Complete(Exception? e = null)
+	{
+		if (!this.outgoingChannel.Writer.TryComplete(e))
+		{
+			return;
+		}
+
+		foreach (ResponseCallback callback in this.messageCallbacks.Values)
+		{
+			if (e is not null)
+			{
+				callback.SetException(e);
+			}
+			else
+			{
+				callback.SetCanceled();
+			}
+		}
+	}
+
+	private abstract class ResponseCallback
+	{
+		internal abstract void SetException(Exception e);
+
+		internal abstract void SetCanceled();
+	}
+
+	private sealed class ResponseCallback<T>(TaskCompletionSource<T> taskCompletionSource) : ResponseCallback
+	{
+		private readonly TaskCompletionSource<T> taskCompletionSource = taskCompletionSource;
+
+		internal void SetResult(T result) => this.taskCompletionSource.SetResult(result);
+
+		internal override void SetException(Exception e) => this.taskCompletionSource.SetException(e);
+
+		internal override void SetCanceled() => this.taskCompletionSource.SetCanceled();
 	}
 }

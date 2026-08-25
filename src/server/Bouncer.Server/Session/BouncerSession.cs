@@ -73,7 +73,7 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 
 				foreach (ClientSessionMessage.Types.UniverseRegistration universeRegistration in request.RegisterServerRequest.Universes)
 				{
-					RegisteredUniverse universe = this.universeManager.Register(this, server, universeRegistration.Data, universeRegistration.State);
+					RegisteredUniverse universe = this.universeManager.Register(this, server, universeRegistration.Data, universeRegistration.State, universeRegistration.Players);
 
 					this.universesByTrackingId[universeRegistration.TrackingId] = universe;
 
@@ -117,7 +117,7 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 					break;
 				}
 
-				RegisteredUniverse universe = this.universeManager.Register(this, server, request.RegisterUniverseRequest.Registration.Data, request.RegisterUniverseRequest.Registration.State);
+				RegisteredUniverse universe = this.universeManager.Register(this, server, request.RegisterUniverseRequest.Registration.Data, request.RegisterUniverseRequest.Registration.State, request.RegisterUniverseRequest.Registration.Players);
 
 				this.universesByTrackingId[request.RegisterUniverseRequest.Registration.TrackingId] = universe;
 
@@ -140,6 +140,18 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 				}
 
 				this.universeManager.Unregister(universe);
+
+				break;
+			}
+
+			case ClientSessionMessage.MessageOneofCase.UniverseUpdateRequest:
+			{
+				if (!this.universesByTrackingId.TryGetValue(request.UniverseUpdateRequest.TrackingId, out RegisteredUniverse? universe))
+				{
+					break;
+				}
+
+				this.Update(universe, request.UniverseUpdateRequest.Update);
 
 				break;
 			}
@@ -193,6 +205,24 @@ internal sealed class BouncerSession(ServerManager serverManager, UniverseManage
 			{
 				server.Status.Memory = status.Memory;
 			}
+		}
+	}
+
+	private void Update(RegisteredUniverse universe, UniverseUpdate update)
+	{
+		foreach (ByteString player in update.PlayersJoined)
+		{
+			universe.Join(new Guid(player.Span, bigEndian: true));
+		}
+
+		foreach (ByteString player in update.PlayersLeft)
+		{
+			universe.Quit(new Guid(player.Span, bigEndian: true));
+		}
+
+		if (update.State is not null)
+		{
+			universe.SetState(update.State);
 		}
 	}
 

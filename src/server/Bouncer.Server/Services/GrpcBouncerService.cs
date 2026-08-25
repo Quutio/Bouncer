@@ -60,21 +60,16 @@ internal sealed class GrpcBouncerService(ServerManager serverManager, UniverseMa
 
 	public override async Task<JoinUniverseResponse> JoinUniverse(JoinUniverseRequest request, ServerCallContext context)
 	{
-		foreach (RegisteredUniverse universe in this.universeManager.Universes.Where(g => g.Data.Type == request.UniverseType))
+		(RegisteredUniverse Universe, int ReservationId)? result = await this.universeManager.Reserve(request.UniverseType, request.Players);
+		if (result is not null)
 		{
-			int? reservationId = await universe.ReserveSlot(request.Players);
-			if (reservationId is null)
-			{
-				continue;
-			}
-
 			return new JoinUniverseResponse
 			{
 				Success = new JoinUniverseResponse.Types.Success
 				{
-					ServerId = universe.Server.Id,
-					UniverseId = universe.Id,
-					ReservationId = (int)reservationId
+					ServerId = result.Value.Universe.Server.Id,
+					UniverseId = result.Value.Universe.Id,
+					ReservationId = result.Value.ReservationId
 				}
 			};
 		}

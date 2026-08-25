@@ -30,6 +30,7 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>, IComparab
 	private readonly Dictionary<Guid, long?> players;
 
 	private readonly HashSet<ServerWatcher> watches;
+	private readonly HashSet<RegisteredUniverse> universes;
 
 	internal bool Unregistration { get; private set; }
 
@@ -54,6 +55,7 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>, IComparab
 		this.players = [];
 
 		this.watches = [];
+		this.universes = [];
 	}
 
 	internal CancellationToken CancellationToken => this.cancellationTokenSource.Token;
@@ -130,6 +132,8 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>, IComparab
 	{
 		lock (this.watches)
 		{
+			this.universes.Add(universe);
+
 			foreach (ServerWatcher watcher in this.watches)
 			{
 				watcher.AddUpdate(new BouncerWatchResponse()
@@ -153,6 +157,8 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>, IComparab
 	{
 		lock (this.watches)
 		{
+			this.universes.Remove(universe);
+
 			foreach (ServerWatcher watcher in this.watches)
 			{
 				watcher.AddUpdate(new BouncerWatchResponse()
@@ -184,6 +190,17 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>, IComparab
 		}
 	}
 
+	internal void AddUpdate(BouncerWatchResponse update)
+	{
+		lock (this.watches)
+		{
+			foreach (ServerWatcher watcher in this.watches)
+			{
+				watcher.AddUpdate(update);
+			}
+		}
+	}
+
 	internal void Cleanup()
 	{
 		lock (this.stateLock)
@@ -208,6 +225,11 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>, IComparab
 				this.logger.PlayerReserveSlotTimeoutServer(player, this.Name, this.Id, this.players.Count);
 			}
 		}
+
+		foreach (RegisteredUniverse universe in this.universes)
+		{
+			universe.Cleanup();
+		}
 	}
 
 	internal CancellationTokenRegistration AddWatcher(ServerWatcher watcher)
@@ -215,6 +237,23 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>, IComparab
 		lock (this.watches)
 		{
 			this.watches.Add(watcher);
+
+			foreach (RegisteredUniverse universe in this.universes)
+			{
+				watcher.AddUpdate(new BouncerWatchResponse()
+				{
+					Universe = new BouncerWatchResponse.Types.Universe()
+					{
+						ServerId = this.Id,
+						UniverseId = universe.Id,
+						Add = new BouncerWatchResponse.Types.Universe.Types.Add()
+						{
+							Data = universe.Data,
+							State = universe.State
+						}
+					}
+				});
+			}
 		}
 
 		return this.cancellationTokenSource.Token.UnsafeRegister(state =>
@@ -233,6 +272,11 @@ internal sealed class RegisteredServer : IEquatable<RegisteredServer>, IComparab
 		}
 
 		this.cancellationTokenSource.Cancel();
+
+		foreach (RegisteredUniverse universe in this.universes)
+		{
+			universe.Unregister();
+		}
 	}
 
 	public ICollection<Guid> Players => this.players.Keys;

@@ -43,6 +43,10 @@ sponge {
 }
 
 tasks.withType<ShadowJar> {
+	filesMatching("META-INF/services/**") {
+		duplicatesStrategy = DuplicatesStrategy.INCLUDE
+	}
+
 	mergeServiceFiles()
 
 	relocate("com.google", "io.quut.bouncer.libs.com.google") {

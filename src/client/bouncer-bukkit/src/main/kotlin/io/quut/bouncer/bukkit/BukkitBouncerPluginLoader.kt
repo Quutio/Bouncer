@@ -23,13 +23,13 @@ class BukkitBouncerPluginLoader : JavaPlugin()
 	override fun onLoad()
 	{
 		this.plugin.load()
-		this.defaultServer.load()
 
 		IBouncerAPI.register(this.api)
 	}
 
 	override fun onEnable()
 	{
+		this.defaultServer.load()
 		this.defaultServer.enable()
 	}
 

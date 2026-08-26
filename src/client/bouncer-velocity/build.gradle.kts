@@ -43,7 +43,10 @@ tasks {
 		relocate("javax.annotation", "io.quut.bouncer.libs.javax.annotation")
 		relocate("kotlin", "io.quut.bouncer.libs.kotlin")
 		relocate("kotlinx", "io.quut.bouncer.libs.kotlinx")
-		relocate("org", "io.quut.bouncer.libs.org")
+		relocate("org", "io.quut.bouncer.libs.org") {
+			exclude("org.spongepowered.**")
+			exclude("org.slf4j.**")
+		}
 	}
 }
 

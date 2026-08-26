@@ -28,6 +28,8 @@ import org.spongepowered.api.event.lifecycle.StartedEngineEvent
 import org.spongepowered.api.event.lifecycle.StartingEngineEvent
 import org.spongepowered.api.event.lifecycle.StoppedGameEvent
 import org.spongepowered.api.event.lifecycle.StoppingEngineEvent
+import org.spongepowered.api.network.channel.ChannelExceptionHandler
+import org.spongepowered.api.network.channel.NoResponseException
 import org.spongepowered.api.network.channel.raw.RawDataChannel
 import org.spongepowered.plugin.builtin.jvm.Plugin
 
@@ -56,6 +58,8 @@ class SpongeBouncerPluginLoader @Inject internal constructor(
 	private fun onRegisterChannel(event: RegisterChannelEvent)
 	{
 		this.handshakeChannel = event.register(Const.HANDSHAKE_CHANNEL_KEY, RawDataChannel::class.java)
+		this.handshakeChannel.setExceptionHandler(ChannelExceptionHandler.logEverything().suppressIfFutureIsPresent(NoResponseException::class.java))
+
 		this.playChannel = event.register(Const.PLAY_CHANNEL_KEY, RawDataChannel::class.java)
 
 		this.universeManager.playChannel = this.playChannel

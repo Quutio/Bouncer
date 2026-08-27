@@ -10,10 +10,16 @@ interface IDistributedServerState : IDistributedEntityState
 
 	companion object
 	{
+		@JvmStatic
 		fun of(type: Key, address: InetSocketAddress? = null, maxPlayers: Int? = null): IDistributedServerState = Impl(type, address, maxPlayers)
 
+		@JvmStatic
 		fun starting(address: InetSocketAddress? = null, maxPlayers: Int? = null): IDistributedServerState = this.of(IDistributedEntityState.STARTING_KEY, address, maxPlayers)
+
+		@JvmStatic
 		fun running(address: InetSocketAddress? = null, maxPlayers: Int? = null): IDistributedServerState = this.of(IDistributedEntityState.RUNNING_KEY, address, maxPlayers)
+
+		@JvmStatic
 		fun stopping(): IDistributedServerState = this.of(IDistributedEntityState.STOPPING_KEY)
 	}
 

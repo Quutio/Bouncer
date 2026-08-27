@@ -10,6 +10,7 @@ interface IDistributedUniverseJoinRequest
 
 	companion object
 	{
+		@JvmStatic
 		fun of(id: Key, players: Collection<UUID>): IDistributedUniverseJoinRequest = Impl(id, players)
 	}
 

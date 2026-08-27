@@ -10,6 +10,7 @@ interface IDistributedServerFilter
 
 		companion object
 		{
+			@JvmStatic
 			fun of(filter: IDistributedServerFilter): INot = Impl(filter)
 		}
 
@@ -22,6 +23,7 @@ interface IDistributedServerFilter
 
 		companion object
 		{
+			@JvmStatic
 			fun of(group: String): IGroup = Impl(group)
 		}
 
